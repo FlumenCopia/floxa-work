@@ -36,3 +36,4 @@
 4. **Data Tables & Modals:**
    - All data tables (`PaymentLedgerView`, `AdminPortal`) wrapped in `overflow-x-auto` to prevent viewport blowout on narrow screens.
    - Modals use `max-h-[92vh]` and `overflow-y-auto` to remain completely accessible when on-screen virtual keyboards appear.
+
