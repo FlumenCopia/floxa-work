@@ -18,6 +18,9 @@ export const MiniDiscoveryModal: React.FC<MiniDiscoveryModalProps> = ({
   if (!brief) return null;
 
   const [diagnosticQ1, setDiagnosticQ1] = useState('');
+  const [strategicApproach, setStrategicApproach] = useState('');
+  const [identifiedRisks, setIdentifiedRisks] = useState('');
+  const [portfolioLink, setPortfolioLink] = useState('');
   const [craftSlider, setCraftSlider] = useState(80);
   const [totalBidPrice, setTotalBidPrice] = useState(
     brief.budgetMin ? Math.round(brief.budgetMin + (brief.budgetMax - brief.budgetMin) / 2) : 2400
@@ -36,6 +39,22 @@ export const MiniDiscoveryModal: React.FC<MiniDiscoveryModalProps> = ({
       const m2 = Math.round(Number(totalBidPrice) * 0.4);
       const m3 = Number(totalBidPrice) - m1 - m2;
 
+      const risksList = identifiedRisks
+        .split('\n')
+        .map((r) => r.trim())
+        .filter(Boolean);
+
+      const portfolioItems = portfolioLink.trim()
+        ? [
+            {
+              title: 'Relevant Verified Proof of Work',
+              description: 'Demonstrated execution in matching problem domain.',
+              category: brief.category || 'Consulting',
+              url: portfolioLink.trim(),
+            },
+          ]
+        : [];
+
       await submitProposal({
         briefId,
         diagnosticAnswers: [
@@ -44,7 +63,15 @@ export const MiniDiscoveryModal: React.FC<MiniDiscoveryModalProps> = ({
             answer: diagnosticQ1,
           },
         ],
-        strategicSliders: [{ key: 'craft_direction', value: craftSlider }],
+        problemDiagnosis: {
+          understanding: diagnosticQ1,
+          risksAndConstraints: risksList,
+        },
+        proposedStrategy: {
+          strategicApproach: strategicApproach.trim() || 'Discovery-first staged execution methodology.',
+          expectedOutcomes: ['Accelerated go-to-market', 'Robust architecture alignment'],
+        },
+        strategicSliders: [{ key: 'craft_direction', label: 'Craft vs Speed', value: craftSlider }],
         proposedMilestones: [
           { title: 'Milestone 1: Discovery & Concept Exploration', amount: m1, deliveryDays: 7, estimatedDays: 7 },
           { title: 'Milestone 2: Production & Asset Engineering', amount: m2, deliveryDays: 7, estimatedDays: 7 },
@@ -52,6 +79,8 @@ export const MiniDiscoveryModal: React.FC<MiniDiscoveryModalProps> = ({
         ],
         totalPrice: Number(totalBidPrice),
         estimatedDays: 21,
+        portfolioItems,
+        portfolioProofUrls: portfolioLink.trim() ? [portfolioLink.trim()] : [],
       });
 
       onSubmitSuccess();
@@ -91,11 +120,11 @@ export const MiniDiscoveryModal: React.FC<MiniDiscoveryModalProps> = ({
           {/* Section 1: Problem Diagnosis */}
           <div className="space-y-2">
             <h3 className="text-xs font-bold text-[#0084ff] uppercase tracking-wider">
-              1. Problem Diagnosis
+              1. Problem Diagnosis & Root Causes
             </h3>
             <textarea
               required
-              rows={3}
+              rows={2}
               value={diagnosticQ1}
               onChange={(e) => setDiagnosticQ1(e.target.value)}
               placeholder="State your clear diagnosis of the client's problem statement..."
@@ -103,11 +132,53 @@ export const MiniDiscoveryModal: React.FC<MiniDiscoveryModalProps> = ({
             />
           </div>
 
-          {/* Section 2: Execution Direction Slider */}
+          {/* Section 2: Strategic Approach */}
+          <div className="space-y-2">
+            <h3 className="text-xs font-bold text-indigo-600 uppercase tracking-wider">
+              2. Proposed Strategy & Execution Plan
+            </h3>
+            <textarea
+              rows={2}
+              value={strategicApproach}
+              onChange={(e) => setStrategicApproach(e.target.value)}
+              placeholder="Describe your recommended strategic methodology..."
+              className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#0084ff] outline-none text-slate-900 leading-relaxed resize-none shadow-sm"
+            />
+          </div>
+
+          {/* Section 3: Identified Risks / Constraints */}
+          <div className="space-y-1">
+            <label className="text-xs text-slate-700 font-bold uppercase tracking-wider flex items-center justify-between">
+              <span>Identified Risks & Constraints (Optional)</span>
+            </label>
+            <input
+              type="text"
+              value={identifiedRisks}
+              onChange={(e) => setIdentifiedRisks(e.target.value)}
+              placeholder="e.g. Strict regulatory requirements, API rate limits (one per line)"
+              className="w-full text-xs p-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#0084ff] outline-none text-slate-900 shadow-sm"
+            />
+          </div>
+
+          {/* Section 4: Relevant Portfolio Proof */}
+          <div className="space-y-1">
+            <label className="text-xs text-slate-700 font-bold uppercase tracking-wider">
+              Relevant Proof-of-Work Link (Optional)
+            </label>
+            <input
+              type="url"
+              value={portfolioLink}
+              onChange={(e) => setPortfolioLink(e.target.value)}
+              placeholder="https://... or link to project case study"
+              className="w-full text-xs p-2.5 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#0084ff] outline-none text-slate-900 shadow-sm"
+            />
+          </div>
+
+          {/* Section 5: Execution Direction Slider */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs">
               <span className="text-slate-600 font-medium">Execution Direction</span>
-              <span className="text-[#0084ff] font-bold font-mono">{craftSlider}% Consumer Friendly</span>
+              <span className="text-[#0084ff] font-bold font-mono">{craftSlider}% Craft Focus</span>
             </div>
             <input
               type="range"

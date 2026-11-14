@@ -10,9 +10,19 @@ import {
   Plus,
   CheckCircle2,
   Inbox,
+  Scale,
+  Bookmark,
+  BookmarkCheck,
 } from 'lucide-react';
-import { fetchBriefs, fetchMyProposals, acceptProposalAndPayAdvance } from '@/lib/api';
+import {
+  fetchBriefs,
+  fetchMyProposals,
+  acceptProposalAndPayAdvance,
+  shortlistProposal,
+  declineProposal,
+} from '@/lib/api';
 import { WorkspaceView } from './WorkspaceView';
+import { ProposalComparisonEngine } from './ProposalComparisonEngine';
 
 interface ClientDashboardProps {
   onPostNewBrief: () => void;
@@ -30,6 +40,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
   const [proposals, setProposals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [acceptedProposalId, setAcceptedProposalId] = useState<string | null>(null);
+  const [isComparing, setIsComparing] = useState(false);
 
   const loadData = async () => {
     setIsLoading(true);
@@ -56,10 +67,30 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
     try {
       await acceptProposalAndPayAdvance(proposalId);
       setAcceptedProposalId(proposalId);
+      setIsComparing(false);
       onEscrowReleased();
       loadData();
     } catch (err: any) {
       alert(err.message || 'Failed to accept proposal');
+    }
+  };
+
+  const handleShortlist = async (proposalId: string) => {
+    try {
+      await shortlistProposal(proposalId);
+      loadData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update shortlist');
+    }
+  };
+
+  const handleDecline = async (proposalId: string) => {
+    if (!confirm('Are you sure you want to decline this proposal?')) return;
+    try {
+      await declineProposal(proposalId);
+      loadData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to decline proposal');
     }
   };
 
@@ -164,6 +195,32 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       {/* Tab 1: Review Proposals */}
       {!isLoading && activeTab === 'review_bids' && (
         <div className="space-y-4">
+          {proposals.length >= 2 && (
+            <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/80 to-blue-50/90 rounded-2xl border border-blue-200/80 p-4 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#0084ff]/10 border border-[#0084ff]/25 flex items-center justify-center text-[#0084ff] shrink-0">
+                  <Scale size={20} strokeWidth={2.5} />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">
+                    Mini-Discovery Proposal Comparison Engine
+                  </h4>
+                  <p className="text-xs text-slate-500">
+                    Evaluate diagnostics, strategies, and milestone breakdowns side-by-side before awarding.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsComparing(true)}
+                className="btn-cyan-pill text-xs px-5 py-2.5 self-start sm:self-auto shrink-0 shadow-xs"
+              >
+                <Scale size={14} strokeWidth={2.5} />
+                <span>Compare Proposals ({proposals.length})</span>
+              </button>
+            </div>
+          )}
+
           {proposals.length === 0 ? (
             <div className="floxa-card py-16 text-center space-y-4">
               <div className="w-14 h-14 rounded-2xl bg-[#0084ff]/10 border border-[#0084ff]/25 flex items-center justify-center mx-auto text-[#0084ff]">
@@ -260,13 +317,35 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
 
                   {/* Action Bar */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pt-3 border-t border-slate-100">
-                    <button
-                      onClick={onOpenCall}
-                      className="btn-dark-pill text-xs px-4 py-2 w-full sm:w-auto justify-center"
-                    >
-                      <Play size={13} className="text-[#0084ff]" fill="#0084ff" />
-                      <span>Video Interview</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={onOpenCall}
+                        className="btn-dark-pill text-xs px-3.5 py-2 justify-center"
+                      >
+                        <Play size={13} className="text-[#0084ff]" fill="#0084ff" />
+                        <span>Interview</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleShortlist(proposal._id || proposal.id)}
+                        className={`p-2 rounded-xl border text-xs font-bold transition-all ${
+                          proposal.status === 'shortlisted'
+                            ? 'bg-amber-50 border-amber-300 text-amber-600'
+                            : 'bg-white border-slate-200 text-slate-500 hover:text-amber-500'
+                        }`}
+                        title={proposal.status === 'shortlisted' ? 'Shortlisted' : 'Shortlist proposal'}
+                      >
+                        {proposal.status === 'shortlisted' ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
+                      </button>
+
+                      <button
+                        onClick={() => setIsComparing(true)}
+                        className="p-2 rounded-xl border border-slate-200 bg-white text-slate-500 hover:text-[#0084ff] hover:border-[#0084ff]/40 text-xs font-bold transition-all"
+                        title="Compare in side-by-side engine"
+                      >
+                        <Scale size={14} />
+                      </button>
+                    </div>
 
                     {isAccepted ? (
                       <span className="px-4 py-2 rounded-full bg-[#e0f2fe] text-[#0284c7] border border-[#bae6fd] text-xs font-bold flex items-center justify-center gap-1.5 w-full sm:w-auto">
@@ -341,6 +420,19 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             ))
           )}
         </div>
+      )}
+
+      {/* Side-by-Side Proposal Comparison Engine Modal */}
+      {isComparing && proposals.length >= 2 && (
+        <ProposalComparisonEngine
+          brief={briefs[0] || { title: 'Project Discovery Brief' }}
+          proposals={proposals}
+          onAcceptProposal={handleAcceptProposal}
+          onShortlistProposal={handleShortlist}
+          onDeclineProposal={handleDecline}
+          onOpenCall={onOpenCall}
+          onClose={() => setIsComparing(false)}
+        />
       )}
     </div>
   );

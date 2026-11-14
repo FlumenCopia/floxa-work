@@ -337,13 +337,138 @@ export async function fetchMyProposals() {
   return data.proposals || [];
 }
 
+export async function fetchBriefProposals(
+  briefId: string,
+  options?: { status?: string; sortBy?: string; search?: string }
+) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const params = new URLSearchParams();
+  if (options?.status) params.set('status', options.status);
+  if (options?.sortBy) params.set('sortBy', options.sortBy);
+  if (options?.search) params.set('search', options.search);
+
+  const res = await fetch(`${API_BASE}/briefs/${briefId}/proposals?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch brief proposals');
+  return data;
+}
+
+export async function fetchProposalById(id: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/proposals/${id}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch proposal');
+  return data.proposal;
+}
+
+export async function shortlistProposal(id: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/proposals/${id}/shortlist`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to update shortlist status');
+  return data;
+}
+
+export async function declineProposal(id: string, reason?: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/proposals/${id}/decline`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ reason }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to decline proposal');
+  return data;
+}
+
+export async function withdrawProposal(id: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/proposals/${id}/withdraw`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to withdraw proposal');
+  return data;
+}
+
+export async function compareProposalsApi(briefId: string, proposalIds: string[]) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/proposals/compare`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ briefId, proposalIds }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to compare proposals');
+  return data;
+}
+
 export async function submitProposal(proposalData: {
   briefId: string;
-  diagnosticAnswers: { question: string; answer: string }[];
-  strategicSliders?: { key: string; value: number }[];
-  proposedMilestones: { title: string; description?: string; amount: number; estimatedDays?: number; deliveryDays?: number }[];
+  diagnosticAnswers?: { question: string; answer: string }[];
+  problemDiagnosis?: {
+    understanding?: string;
+    rootCauses?: string[];
+    risksAndConstraints?: string[];
+    clarifyingQuestions?: string[];
+  };
+  proposedStrategy?: {
+    strategicApproach?: string;
+    solutionArchitecture?: string;
+    expectedOutcomes?: string[];
+    dependencies?: string[];
+    alternativeApproaches?: string;
+  };
+  strategicSliders?: { key: string; label?: string; value: number; rationale?: string }[];
+  proposedMilestones: {
+    title: string;
+    description?: string;
+    deliverables?: string[];
+    amount: number;
+    estimatedDays?: number;
+    deliveryDays?: number;
+    acceptanceCriteria?: string;
+    revisionAssumptions?: string;
+  }[];
   totalPrice: number;
   estimatedDays: number;
+  assumptionsAndExclusions?: string;
+  portfolioItems?: {
+    title: string;
+    description: string;
+    category?: string;
+    role?: string;
+    techOrSkills?: string[];
+    outcome?: string;
+    url?: string;
+    relevanceExplanation?: string;
+  }[];
+  portfolioProofUrls?: string[];
+  freelancerIntro?: {
+    coverNote?: string;
+    relevantExperience?: string;
+    availability?: string;
+  };
 }) {
   const token = getAuthToken();
   if (!token) {

@@ -18,6 +18,11 @@ import { createBrief, getBriefsFeed, getBriefDetails } from '../controllers/brie
 import {
   submitMiniDiscoveryProposal,
   getBriefProposals,
+  getProposalById,
+  shortlistProposal,
+  declineProposal,
+  withdrawProposal,
+  compareProposals,
   getMyProposals,
 } from '../controllers/proposal.controller.js';
 import {
@@ -83,9 +88,14 @@ router.post('/briefs', requireAuth, createBrief);
 router.get('/briefs', getBriefsFeed);
 router.get('/briefs/:idOrToken', getBriefDetails);
 
-// Mini-Discovery Proposals
+// Mini-Discovery Proposals & Proposal Comparison Engine
 router.post('/proposals', requireAuth, submitMiniDiscoveryProposal);
 router.get('/proposals/me', requireAuth, getMyProposals);
+router.post('/proposals/compare', requireAuth, compareProposals);
+router.get('/proposals/:id', requireAuth, getProposalById);
+router.post('/proposals/:id/shortlist', requireAuth, shortlistProposal);
+router.post('/proposals/:id/decline', requireAuth, declineProposal);
+router.post('/proposals/:id/withdraw', requireAuth, withdrawProposal);
 router.get('/briefs/:briefId/proposals', requireAuth, getBriefProposals);
 
 // Contracts & Direct Milestone Billing (0% Platform Custody)

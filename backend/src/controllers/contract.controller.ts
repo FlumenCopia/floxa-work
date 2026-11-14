@@ -38,6 +38,27 @@ export async function acceptProposalAndCreateContract(
       return;
     }
 
+    // STRICT BRIEF OWNERSHIP: Only the client who posted the brief can accept proposals!
+    if (brief.clientId.toString() !== req.user.id.toString() && req.user.role !== 'admin') {
+      res.status(403).json({ error: 'Forbidden: You can only accept proposals submitted to your own discovery briefs.' });
+      return;
+    }
+
+    // Guard against already accepted proposals
+    if (proposal.status === 'accepted') {
+      res.status(409).json({ error: 'This proposal has already been accepted into an active project agreement.' });
+      return;
+    }
+
+    // Guard against duplicate contracts for the same brief
+    const existingContract = await Contract.findOne({
+      $or: [{ proposalId: proposal._id }, { briefId: brief._id, status: { $in: ['active', 'completed'] } }],
+    });
+    if (existingContract) {
+      res.status(409).json({ error: 'An active project contract has already been established for this discovery brief.' });
+      return;
+    }
+
     const contract = await Contract.create({
       briefId: brief._id,
       proposalId: proposal._id,
@@ -48,6 +69,7 @@ export async function acceptProposalAndCreateContract(
       status: 'active',
       msaAgreementSignedAt: new Date(),
       clientSignature: clientSignature || 'Digital E-Signature verified',
+      proposalSnapshot: proposal.toObject(), // Immutable proposal terms snapshot
     });
 
     const milestonesData = proposal.proposedMilestones.map((m, index) => ({
@@ -82,10 +104,40 @@ export async function acceptProposalAndCreateContract(
     });
 
     proposal.status = 'accepted';
+    proposal.acceptedAt = new Date();
     await proposal.save();
+
+    // Decline competing pending/shortlisted proposals on this brief
+    await Proposal.updateMany(
+      { briefId: brief._id, _id: { $ne: proposal._id }, status: { $in: ['pending', 'shortlisted'] } },
+      { status: 'declined', declinedAt: new Date(), clientFeedback: 'Another proposal was accepted for this brief.' }
+    );
 
     brief.status = 'assigned';
     await brief.save();
+
+    const ipAddress = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
+    await AuditLog.create({
+      actorId: req.user.id,
+      action: 'PROPOSAL_ACCEPTED',
+      targetType: 'Proposal',
+      targetId: proposal.id,
+      ipAddress,
+      userAgent,
+      metadata: { briefId: brief.id, contractId: contract.id, totalPrice: proposal.totalPrice },
+    });
+
+    await AuditLog.create({
+      actorId: req.user.id,
+      action: 'CONTRACT_CREATED',
+      targetType: 'Contract',
+      targetId: contract.id,
+      ipAddress,
+      userAgent,
+      metadata: { briefId: brief.id, proposalId: proposal.id, milestoneCount: createdMilestones.length },
+    });
 
     broadcastSystemNotification({
       title: 'Project Contract Initialized',

@@ -15,6 +15,7 @@ export interface IContract {
   msaAgreementSignedAt?: Date;
   clientSignature?: string;
   freelancerSignature?: string;
+  proposalSnapshot?: Record<string, any>;
   floxaDesignWorkspaceLinked: boolean;
   floxaDesignProjectId?: string;
   createdAt?: Date;
@@ -38,6 +39,7 @@ const contractSchema = new Schema<IContract>(
     msaAgreementSignedAt: { type: Date, default: null },
     clientSignature: { type: String, default: '' },
     freelancerSignature: { type: String, default: '' },
+    proposalSnapshot: { type: Schema.Types.Mixed, default: null },
     floxaDesignWorkspaceLinked: { type: Boolean, default: false },
     floxaDesignProjectId: { type: String, default: '' },
   },
