@@ -41,3 +41,4 @@
 1. **Strict Data Isolation:** Neither party can access or alter the other's private data, draft briefs, or competing proposals.
 2. **True Version Preservation:** Deliverable resubmissions append new versions (`v1` → `v2`) rather than mutating existing history, providing complete accountability for scope and revisions.
 3. **Decoupled Financial Invariant:** Deliverable approval never initiates automated bank withdrawals or disbursements. Payment records represent user-reported external direct settlements verified through authentic transaction references (UTR).
+

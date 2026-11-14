@@ -67,3 +67,4 @@
   - `GET /escrow/balance` → `HTTP 404 Not Found` (endpoint does not exist).
   - Deliverable signoff does not automatically trigger financial disbursement.
   - Payment records represent user-reported external direct settlements (bank transfer, UPI, Stripe, wire).
+

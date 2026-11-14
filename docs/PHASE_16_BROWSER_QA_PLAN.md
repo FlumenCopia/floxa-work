@@ -98,3 +98,4 @@ Verifying:
   - Verify client cannot view or modify unauthorized contracts or proposals.
   - Verify private files reject unauthorized download requests.
   - Verify zero plaintext passwords or secrets in browser logs or network responses.
+

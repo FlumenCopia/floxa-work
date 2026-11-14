@@ -46,3 +46,4 @@
 - **Horizontal Scroll Audit:** Evaluated `document.documentElement.scrollWidth <= window.innerWidth` across all breakpoints. Zero horizontal scrolling detected on body.
 - **Touch Target Audit:** All primary buttons (`.btn-cyan-pill`, `.btn-dark-pill`, mobile navigation icons) exceed 44×44px interactive bounding box.
 - **Font Legibility:** Minimum text size on mobile is 10.5px (uppercase category pills) and 12px for body metadata, with 14px–16px for form inputs to prevent automatic iOS zoom.
+

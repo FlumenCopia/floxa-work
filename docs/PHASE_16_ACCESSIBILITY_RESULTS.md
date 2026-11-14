@@ -32,3 +32,4 @@
    - Critical legal and contractual notices—including the Zero-Custody Direct Billing Disclosure—are rendered with high-contrast badge containers, semantic icon markers (`ShieldCheck`, `AlertCircle`), and accessible text hierarchies.
 4. **Non-Reliance on Color Alone:**
    - Status indicators (e.g., Deliverable Approved, Payment Reported, Disputed) couple semantic colors (emerald, amber, rose) with unique icons (`CheckCircle2`, `AlertTriangle`, `X`, `ShieldCheck`), guaranteeing full accessibility for color-blind users.
+
