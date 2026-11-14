@@ -123,7 +123,11 @@ export function initWebSocketServer(server: Server): WebSocketServer {
             // Broadcast message to everyone in the room
             wss.clients.forEach((client) => {
               const target = client as ClientSocket;
-              if (target !== ws && target.readyState === WebSocket.OPEN) {
+              if (
+                target !== ws &&
+                target.readyState === WebSocket.OPEN &&
+                (!ws.room || target.room === ws.room)
+              ) {
                 target.send(JSON.stringify({ type: 'new_message', payload: message.payload }));
               }
             });
@@ -140,6 +144,14 @@ export function initWebSocketServer(server: Server): WebSocketServer {
             wss.clients.forEach((client) => {
               const target = client as ClientSocket;
               if (target !== ws && target.readyState === WebSocket.OPEN) {
+                // If targeted to a specific user, route directly to that user's socket
+                if (message.targetUserId && target.userId !== message.targetUserId) {
+                  return;
+                }
+                // If targeted to a specific room, route only within that room
+                if (message.room && target.room && target.room !== message.room) {
+                  return;
+                }
                 target.send(JSON.stringify(message));
               }
             });

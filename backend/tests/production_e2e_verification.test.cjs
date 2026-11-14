@@ -153,10 +153,10 @@ async function runTests() {
   // Clean up temp file
   try { fs.unlinkSync(dummyFilePath); } catch {}
 
-  // 7. Verify File Download Stream
+  // 7. Verify Secure File Download Stream (Owner access)
   console.log('7. Verifying Secure File Download Stream...');
   const downloadRes = await fetch(`${BASE_URL}/api/files/${uploadedFile.id}/download`, {
-    headers: { Authorization: `Bearer ${clientToken}` },
+    headers: { Authorization: `Bearer ${freelancerToken}` },
   });
   assert.strictEqual(downloadRes.status, 200);
   const downloadedText = await downloadRes.text();

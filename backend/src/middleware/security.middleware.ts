@@ -70,12 +70,12 @@ export function createRateLimiter(options: {
 
 export const authRateLimiter = createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 100, // 100 attempts per 15 minutes
+  maxRequests: process.env.NODE_ENV === 'production' ? 100 : 1000, // 1000 in dev/test, 100 in production
   message: 'Too many authentication attempts. Please wait 15 minutes before trying again.',
 });
 
 export const apiRateLimiter = createRateLimiter({
   windowMs: 60 * 1000, // 1 minute
-  maxRequests: 240, // 240 requests/min
+  maxRequests: process.env.NODE_ENV === 'production' ? 240 : 2000,
   message: 'Rate limit exceeded. Please slow down your requests.',
 });

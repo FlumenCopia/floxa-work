@@ -1,5 +1,18 @@
 import { Router } from 'express';
-import { register, login, getMe } from '../controllers/auth.controller.js';
+import {
+  register,
+  login,
+  refreshTokenHandler,
+  logout,
+  getActiveSessions,
+  revokeSession,
+  revokeAllOtherSessions,
+  forgotPassword,
+  resetPassword,
+  requestEmailVerification,
+  verifyEmail,
+  getMe,
+} from '../controllers/auth.controller.js';
 import { getSocialFeed, createPost, likePost, getTopTalent } from '../controllers/feed.controller.js';
 import { createBrief, getBriefsFeed, getBriefDetails } from '../controllers/brief.controller.js';
 import {
@@ -41,9 +54,18 @@ router.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'floxa-work-backend', timestamp: new Date() });
 });
 
-// Auth
+// Auth & Advanced Session Management
 router.post('/auth/register', authRateLimiter, register);
 router.post('/auth/login', authRateLimiter, login);
+router.post('/auth/refresh', authRateLimiter, refreshTokenHandler);
+router.post('/auth/logout', logout);
+router.get('/auth/sessions', requireAuth, getActiveSessions);
+router.delete('/auth/sessions/:sessionId', requireAuth, revokeSession);
+router.post('/auth/sessions/revoke-all-others', requireAuth, revokeAllOtherSessions);
+router.post('/auth/forgot-password', authRateLimiter, forgotPassword);
+router.post('/auth/reset-password', authRateLimiter, resetPassword);
+router.post('/auth/request-email-verification', requireAuth, requestEmailVerification);
+router.post('/auth/verify-email', authRateLimiter, verifyEmail);
 router.get('/auth/me', requireAuth, getMe);
 
 // User Profile & Talent Profile Management

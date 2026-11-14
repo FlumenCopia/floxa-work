@@ -5,15 +5,24 @@ export function getAuthToken(): string | null {
   return localStorage.getItem('floxa_work_jwt');
 }
 
-export function setAuthSession(token: string, user: any) {
+export function getRefreshToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('floxa_work_refresh_token');
+}
+
+export function setAuthSession(token: string, user: any, refreshToken?: string) {
   if (typeof window === 'undefined') return;
   localStorage.setItem('floxa_work_jwt', token);
   localStorage.setItem('floxa_work_user', JSON.stringify(user));
+  if (refreshToken) {
+    localStorage.setItem('floxa_work_refresh_token', refreshToken);
+  }
 }
 
 export function clearAuthSession() {
   if (typeof window === 'undefined') return;
   localStorage.removeItem('floxa_work_jwt');
+  localStorage.removeItem('floxa_work_refresh_token');
   localStorage.removeItem('floxa_work_user');
 }
 
@@ -36,7 +45,7 @@ export async function loginUser(email: string, password: string) {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Login failed');
-  setAuthSession(data.token, data.user);
+  setAuthSession(data.token, data.user, data.refreshToken);
   return data;
 }
 
@@ -54,7 +63,134 @@ export async function registerUser(payload: {
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Registration failed');
-  setAuthSession(data.token, data.user);
+  setAuthSession(data.token, data.user, data.refreshToken);
+  return data;
+}
+
+export async function refreshAuthToken(): Promise<{ token: string; refreshToken: string } | null> {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return null;
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      clearAuthSession();
+      return null;
+    }
+    setAuthSession(data.token, data.user, data.refreshToken);
+    return data;
+  } catch {
+    clearAuthSession();
+    return null;
+  }
+}
+
+export async function logoutUser() {
+  const refreshToken = getRefreshToken();
+  const token = getAuthToken();
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ refreshToken }),
+    });
+  } catch (e) {
+    // ignore
+  } finally {
+    clearAuthSession();
+  }
+}
+
+export async function requestPasswordReset(email: string) {
+  const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Password reset request failed');
+  return data;
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+  const res = await fetch(`${API_BASE}/auth/reset-password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, newPassword }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to reset password');
+  return data;
+}
+
+export async function requestEmailVerification() {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/auth/request-email-verification`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to request email verification');
+  return data;
+}
+
+export async function verifyEmail(token: string) {
+  const res = await fetch(`${API_BASE}/auth/verify-email`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to verify email');
+  return data;
+}
+
+export async function fetchUserSessions() {
+  const token = getAuthToken();
+  if (!token) return [];
+  const res = await fetch(`${API_BASE}/auth/sessions`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch sessions');
+  return data.sessions || [];
+}
+
+export async function revokeUserSession(sessionId: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/auth/sessions/${sessionId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to revoke session');
+  return data;
+}
+
+export async function revokeOtherUserSessions() {
+  const token = getAuthToken();
+  const currentRefreshToken = getRefreshToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/auth/sessions/revoke-all-others`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ currentRefreshToken }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to revoke other sessions');
   return data;
 }
 

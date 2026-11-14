@@ -12,6 +12,11 @@ export interface IUser {
   role: UserRole;
   avatarUrl?: string;
   isVerified: boolean;
+  emailVerified?: boolean;
+  emailVerificationTokenHash?: string;
+  emailVerificationExpires?: Date;
+  passwordResetTokenHash?: string;
+  passwordResetExpires?: Date;
   floxaDesignLinked: boolean;
   floxaDesignUserId?: string;
   createdAt?: Date;
@@ -27,6 +32,11 @@ const userSchema = new Schema<IUser>(
     role: { type: String, enum: ['freelancer', 'client', 'dual', 'admin'], default: 'dual' },
     avatarUrl: { type: String, default: '' },
     isVerified: { type: Boolean, default: false },
+    emailVerified: { type: Boolean, default: false },
+    emailVerificationTokenHash: { type: String, default: null, select: false },
+    emailVerificationExpires: { type: Date, default: null, select: false },
+    passwordResetTokenHash: { type: String, default: null, select: false },
+    passwordResetExpires: { type: Date, default: null, select: false },
     floxaDesignLinked: { type: Boolean, default: false },
     floxaDesignUserId: { type: String, default: '' },
   },
@@ -41,6 +51,8 @@ userSchema.set('toJSON', {
   transform: (_doc, ret: Record<string, any>) => {
     ret.id = ret._id?.toString();
     delete ret.passwordHash;
+    delete ret.passwordResetTokenHash;
+    delete ret.emailVerificationTokenHash;
     delete ret.__v;
     return ret;
   },

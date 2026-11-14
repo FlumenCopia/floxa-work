@@ -4,6 +4,10 @@ import path from 'path';
 import fs from 'fs';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { FileRecord } from '../models/File.model.js';
+import { Contract } from '../models/Contract.model.js';
+import { Milestone } from '../models/Milestone.model.js';
+import { PaymentRecord } from '../models/PaymentRecord.model.js';
+import { AuditLog } from '../models/AuditLog.model.js';
 
 const UPLOAD_DIR = path.resolve(process.cwd(), 'media', 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) {
@@ -93,6 +97,19 @@ export async function uploadSingleFile(
       isPublic,
     });
 
+    const ipAddress = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
+    await AuditLog.create({
+      actorId: req.user.id,
+      action: 'FILE_UPLOADED',
+      targetType: 'FileRecord',
+      targetId: fileDoc.id,
+      ipAddress,
+      userAgent,
+      metadata: { originalName: fileDoc.originalName, mimeType: fileDoc.mimeType, sizeBytes: fileDoc.sizeBytes, isPublic },
+    });
+
     res.status(201).json({
       message: 'File uploaded successfully',
       file: {
@@ -130,10 +147,91 @@ export async function downloadFile(
       return;
     }
 
+    const ipAddress = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
+    // RESOURCE-LEVEL AUTHORIZATION CHECK
+    if (!fileDoc.isPublic) {
+      if (!req.user) {
+        res.status(401).json({ error: 'Authentication required to download private resources.' });
+        return;
+      }
+
+      const isOwner = fileDoc.ownerId && fileDoc.ownerId.toString() === req.user.id.toString();
+      const isAdmin = req.user.role === 'admin';
+
+      let isContractParticipant = false;
+      if (!isOwner && !isAdmin) {
+        // Check if file is part of a milestone submission or payment receipt in a contract where user participates
+        const relevantMilestone = await Milestone.findOne({
+          $or: [
+            { 'submissions.fileUrls': fileDoc.filename },
+            { 'submissions.fileUrls': fileDoc.accessUrl },
+            { 'paymentDetails.receiptFileUrl': fileDoc.filename },
+            { 'paymentDetails.receiptFileUrl': fileDoc.accessUrl },
+          ],
+        });
+
+        if (relevantMilestone) {
+          const contract = await Contract.findById(relevantMilestone.contractId);
+          if (
+            contract &&
+            (contract.clientId.toString() === req.user.id.toString() ||
+              contract.freelancerId.toString() === req.user.id.toString())
+          ) {
+            isContractParticipant = true;
+          }
+        }
+
+        if (!isContractParticipant) {
+          const relevantPayment = await PaymentRecord.findOne({
+            $or: [
+              { receiptFileUrl: fileDoc.filename },
+              { receiptFileUrl: fileDoc.accessUrl },
+            ],
+          });
+          if (
+            relevantPayment &&
+            (relevantPayment.payerId.toString() === req.user.id.toString() ||
+              relevantPayment.payeeId.toString() === req.user.id.toString())
+          ) {
+            isContractParticipant = true;
+          }
+        }
+      }
+
+      if (!isOwner && !isAdmin && !isContractParticipant) {
+        await AuditLog.create({
+          actorId: req.user.id,
+          action: 'UNAUTHORIZED_FILE_ACCESS_ATTEMPT',
+          targetType: 'FileRecord',
+          targetId: fileDoc.id,
+          ipAddress,
+          userAgent,
+          metadata: { filename: fileDoc.filename },
+        });
+
+        res.status(403).json({ error: 'Access denied: You do not have permission to download this file.' });
+        return;
+      }
+    }
+
     const fullPath = path.resolve(fileDoc.storagePath);
     if (!fs.existsSync(fullPath)) {
       res.status(404).json({ error: 'File resource missing from storage disk' });
       return;
+    }
+
+    if (req.user) {
+      await AuditLog.create({
+        actorId: req.user.id,
+        action: 'FILE_DOWNLOADED',
+        targetType: 'FileRecord',
+        targetId: fileDoc.id,
+        ipAddress,
+        userAgent,
+        metadata: { filename: fileDoc.filename, originalName: fileDoc.originalName },
+      });
     }
 
     res.download(fullPath, fileDoc.originalName);

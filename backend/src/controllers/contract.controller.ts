@@ -6,6 +6,7 @@ import { Proposal } from '../models/Proposal.model.js';
 import { Brief } from '../models/Brief.model.js';
 import { TalentProfile } from '../models/TalentProfile.model.js';
 import { PaymentRecord } from '../models/PaymentRecord.model.js';
+import { AuditLog } from '../models/AuditLog.model.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { broadcastSystemNotification } from '../websocket/socketServer.js';
 
@@ -128,6 +129,18 @@ export async function submitMilestoneDeliverable(
       return;
     }
 
+    const contract = await Contract.findById(milestone.contractId);
+    if (!contract) {
+      res.status(404).json({ error: 'Associated contract not found' });
+      return;
+    }
+
+    // STRICT AUTHORIZATION: Only the assigned freelancer can submit deliverables
+    if (contract.freelancerId.toString() !== req.user.id.toString()) {
+      res.status(403).json({ error: 'Only the assigned freelancer can submit milestone deliverables.' });
+      return;
+    }
+
     milestone.submissions.push({
       fileUrls: fileUrls && fileUrls.length > 0 ? fileUrls : ['Deliverable_Handover_Bundle.zip'],
       notes: notes || 'Deliverable source assets and vector package uploaded for client review.',
@@ -138,6 +151,19 @@ export async function submitMilestoneDeliverable(
     milestone.escrowState = 'in_review';
     milestone.reviewDeadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     await milestone.save();
+
+    const ipAddress = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
+    await AuditLog.create({
+      actorId: req.user.id,
+      action: 'DELIVERABLE_SUBMITTED',
+      targetType: 'Milestone',
+      targetId: milestone.id,
+      ipAddress,
+      userAgent,
+      metadata: { contractId: contract.id, milestoneNumber: milestone.milestoneNumber },
+    });
 
     broadcastSystemNotification({
       title: 'Deliverable Submitted',
@@ -175,6 +201,20 @@ export async function approveMilestoneDeliverable(
       return;
     }
 
+    const contract = await Contract.findById(milestone.contractId);
+    if (!contract) {
+      res.status(404).json({ error: 'Associated contract not found' });
+      return;
+    }
+
+    // STRICT AUTHORIZATION: Only the contract client or platform admin can approve deliverables
+    if (contract.clientId.toString() !== req.user.id.toString() && req.user.role !== 'admin') {
+      res.status(403).json({ error: 'Only the contract client can approve milestone deliverables.' });
+      return;
+    }
+
+    // Milestone deliverable approval changes deliverableStatus to approved.
+    // It does NOT release or custody money.
     milestone.deliverableStatus = 'approved';
     milestone.escrowState = 'released'; // backwards compatibility
     milestone.approvedAt = new Date();
@@ -189,6 +229,19 @@ export async function approveMilestoneDeliverable(
       await Contract.findByIdAndUpdate(milestone.contractId, { status: 'completed' });
     }
 
+    const ipAddress = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
+    await AuditLog.create({
+      actorId: req.user.id,
+      action: 'DELIVERABLE_APPROVED',
+      targetType: 'Milestone',
+      targetId: milestone.id,
+      ipAddress,
+      userAgent,
+      metadata: { contractId: contract.id, milestoneNumber: milestone.milestoneNumber, allApproved },
+    });
+
     broadcastSystemNotification({
       title: 'Deliverable Approved',
       message: `${req.user.name || 'Client'} approved Milestone ${milestone.milestoneNumber} ($${milestone.amount.toLocaleString()}) deliverable! Direct payment can now be settled.`,
@@ -198,7 +251,7 @@ export async function approveMilestoneDeliverable(
     });
 
     res.json({
-      message: 'Deliverable approved successfully. Client and freelancer can now record direct payment.',
+      message: 'Deliverable approved successfully. Client and freelancer can now settle and record direct payment (0% platform custody).',
       milestone,
       allMilestonesApproved: allApproved,
     });
@@ -235,6 +288,17 @@ export async function reportMilestonePayment(
       return;
     }
 
+    // STRICT AUTHORIZATION: Only the contract client can record payment reports
+    if (contract.clientId.toString() !== req.user.id.toString()) {
+      res.status(403).json({ error: 'Only the project client can report direct payment for this milestone.' });
+      return;
+    }
+
+    if (milestone.paymentStatus === 'acknowledged_by_freelancer') {
+      res.status(400).json({ error: 'Payment for this milestone has already been confirmed and acknowledged.' });
+      return;
+    }
+
     // Record user-reported direct payment
     const paymentRecord = await PaymentRecord.create({
       contractId: contract._id,
@@ -261,6 +325,25 @@ export async function reportMilestonePayment(
       receiptFileUrl: receiptFileUrl || '',
     };
     await milestone.save();
+
+    const ipAddress = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
+    await AuditLog.create({
+      actorId: req.user.id,
+      action: 'PAYMENT_REPORTED',
+      targetType: 'PaymentRecord',
+      targetId: paymentRecord.id,
+      ipAddress,
+      userAgent,
+      metadata: {
+        contractId: contract.id,
+        milestoneId: milestone.id,
+        amount: milestone.amount,
+        paymentMethod: paymentMethod || 'bank_transfer',
+        externalReference: externalReference || '',
+      },
+    });
 
     broadcastSystemNotification({
       title: 'Direct Payment Reported',
@@ -303,6 +386,18 @@ export async function acknowledgeMilestonePayment(
       return;
     }
 
+    // STRICT AUTHORIZATION: Only the designated freelancer can acknowledge receipt
+    if (contract.freelancerId.toString() !== req.user.id.toString()) {
+      res.status(403).json({ error: 'Only the project freelancer can acknowledge receipt of direct payment.' });
+      return;
+    }
+
+    // Guard: Client must report payment before freelancer can acknowledge it
+    if (milestone.paymentStatus !== 'reported_by_client') {
+      res.status(400).json({ error: 'Direct payment must be reported by the client before receipt can be acknowledged.' });
+      return;
+    }
+
     // Update payment records
     await PaymentRecord.updateMany(
       { milestoneId: milestone._id, status: 'reported_by_client' },
@@ -321,6 +416,19 @@ export async function acknowledgeMilestonePayment(
       { userId: contract.freelancerId },
       { $inc: { escrowVolumeEarned: milestone.amount } }
     );
+
+    const ipAddress = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
+    await AuditLog.create({
+      actorId: req.user.id,
+      action: 'PAYMENT_ACKNOWLEDGED',
+      targetType: 'Milestone',
+      targetId: milestone.id,
+      ipAddress,
+      userAgent,
+      metadata: { contractId: contract.id, milestoneNumber: milestone.milestoneNumber, amount: milestone.amount },
+    });
 
     broadcastSystemNotification({
       title: 'Payment Acknowledged',
@@ -344,12 +452,34 @@ export async function disputeMilestonePayment(
   res: Response
 ): Promise<void> {
   try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     const { milestoneId } = req.params;
     const { reason } = req.body;
 
     const milestone = await Milestone.findById(milestoneId);
     if (!milestone) {
       res.status(404).json({ error: 'Milestone not found' });
+      return;
+    }
+
+    const contract = await Contract.findById(milestone.contractId);
+    if (!contract) {
+      res.status(404).json({ error: 'Associated contract not found' });
+      return;
+    }
+
+    // STRICT AUTHORIZATION: Only the contract client, freelancer, or admin can dispute
+    const isParticipant =
+      contract.clientId.toString() === req.user.id.toString() ||
+      contract.freelancerId.toString() === req.user.id.toString() ||
+      req.user.role === 'admin';
+
+    if (!isParticipant) {
+      res.status(403).json({ error: 'You do not have permission to dispute payments for this contract.' });
       return;
     }
 
@@ -363,6 +493,19 @@ export async function disputeMilestonePayment(
       { milestoneId: milestone._id },
       { status: 'disputed', disputeReason: reason || 'Discrepancy reported.' }
     );
+
+    const ipAddress = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
+    await AuditLog.create({
+      actorId: req.user.id,
+      action: 'PAYMENT_DISPUTED',
+      targetType: 'Milestone',
+      targetId: milestone.id,
+      ipAddress,
+      userAgent,
+      metadata: { contractId: contract.id, milestoneNumber: milestone.milestoneNumber, reason },
+    });
 
     res.json({ message: 'Payment record marked as disputed. Admin team notified.', milestone });
   } catch (error: any) {

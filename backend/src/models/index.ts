@@ -8,4 +8,6 @@ export * from './Milestone.model.js';
 export * from './ChatMessage.model.js';
 export * from './File.model.js';
 export * from './PaymentRecord.model.js';
+export * from './Session.model.js';
+export * from './AuditLog.model.js';
 

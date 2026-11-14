@@ -18,6 +18,10 @@ yarn-error.log*
 # Environment
 .env*.local
 
+# Uploads & User Media
+backend/media/uploads/
+backend/media/temp/
+
 # OS files
 .DS_Store
 Thumbs.db
