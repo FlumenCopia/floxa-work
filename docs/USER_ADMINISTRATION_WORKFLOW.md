@@ -48,3 +48,4 @@ For minor policy violations or pending dispute investigations, moderators can ap
 - **`invitationsRestricted`:** Blocks the user from receiving or sending direct project invitations.
 
 Both restrictions are logged in the platform audit trail and can be lifted independently upon resolution.
+

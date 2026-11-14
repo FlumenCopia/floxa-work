@@ -253,8 +253,11 @@ router.get('/admin/users', requireAuth, requireAdminPermission('users:view'), ge
 router.get('/admin/users/:userId', requireAuth, requireAdminPermission('users:view'), getAdminUserDetails);
 router.post('/admin/users/:userId/verify', requireAuth, requireAdminPermission('users:manage'), toggleUserVerification);
 router.patch('/admin/users/:userId/status', requireAuth, requireAdminPermission('users:manage'), updateUserAccountStatus);
+router.put('/admin/users/:userId/status', requireAuth, requireAdminPermission('users:manage'), updateUserAccountStatus);
 router.post('/admin/users/:userId/restrictions', requireAuth, requireAdminPermission('users:manage'), updateUserRestrictions);
+router.put('/admin/users/:userId/restrictions', requireAuth, requireAdminPermission('users:manage'), updateUserRestrictions);
 router.patch('/admin/users/:userId/admin-role', requireAuth, requireAdminPermission('roles:manage'), updateAdminUserRole);
+router.put('/admin/users/:userId/admin-role', requireAuth, requireAdminPermission('roles:manage'), updateAdminUserRole);
 router.get('/admin/audit-logs', requireAuth, requireAdminPermission('audit:view'), getAdminAuditLogs);
 router.get('/admin/system-health', requireAuth, requireAdminPermission('health:view'), getSystemHealth);
 router.get('/admin/exports/:type', requireAuth, requireAdminPermission('exports:generate'), exportPlatformData);

@@ -73,3 +73,4 @@ To prevent horizontal and vertical privilege escalation:
 3. **Database Assertion:** Middleware queries the database to confirm that the requesting user's status is `active` and has not been revoked or suspended.
 4. **JWT Claim Refresh:** When an admin's role is updated, existing tokens expire or become invalid upon refresh token rotation.
 5. **Audit Logging:** Every attempt to update an administrative role—whether successful or rejected—is logged to the immutable `AuditLog` collection.
+

@@ -79,3 +79,4 @@ Every analytics response payload includes an immutable compliance notice:
   "nonCustodialNotice": "FLOXA Work is a discovery and collaboration platform with ZERO ESCROW CUSTODY. Contractual budgets represent agreed work scopes between independent parties. External settlements represent direct user-reported peer-to-peer bank/UPI/invoice transfers and DO NOT constitute FLOXA platform revenue."
 }
 ```
+

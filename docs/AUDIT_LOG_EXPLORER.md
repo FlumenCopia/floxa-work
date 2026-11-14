@@ -42,3 +42,4 @@ The `GET /api/admin/audit-logs` endpoint supports faceted querying:
 - `actorId`: Filter by the performing administrator's ID.
 - `startDate` & `endDate`: Filter by ISO date boundaries.
 - `page` & `limit`: Paginated record retrieval (default: 50 records/page).
+

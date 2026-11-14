@@ -1,0 +1,80 @@
+name: FLOXA Work CI/CD Pipeline
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+    branches: [ master, main ]
+
+jobs:
+  backend-test-and-build:
+    name: Backend Lint, Test & TypeScript Build
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:8.0
+        ports:
+          - 27017:27017
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+          cache-dependency-path: 'backend/package-lock.json'
+
+      - name: Install Dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: TypeScript Compilation Check
+        working-directory: backend
+        run: npm run build
+
+      - name: Execute Full Test Suite
+        working-directory: backend
+        env:
+          NODE_ENV: test
+          DATABASE_URL: mongodb://127.0.0.1:27017/floxa_work_ci_test
+          JWT_ACCESS_SECRET: floxa_work_ci_access_secret_key_test_string_2026
+          JWT_REFRESH_SECRET: floxa_work_ci_refresh_secret_key_test_string_2026
+        run: |
+          node tests/phase8_proposal_comparison.test.cjs
+          node tests/phase9_discovery_and_matching.test.cjs
+          node tests/phase10_project_workspace.test.cjs
+          node tests/phase11_trust_reputation_disputes.test.cjs
+          node tests/phase12_admin_analytics_governance.test.cjs
+          node tests/security_and_payment_integrity.test.cjs
+          node tests/production_e2e_verification.test.cjs
+          node tests/phase13_production_readiness.test.cjs
+
+  frontend-build:
+    name: Frontend Build & Typecheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 22.x
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Next.js Production Build (Turbopack)
+        working-directory: frontend
+        env:
+          NEXT_PUBLIC_API_URL: https://api.floxa.work/api
+          NEXT_PUBLIC_WS_URL: wss://api.floxa.work/ws
+        run: npm run build

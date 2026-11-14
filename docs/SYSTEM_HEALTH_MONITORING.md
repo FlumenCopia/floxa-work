@@ -45,3 +45,4 @@ The endpoint response strictly omits:
 - MongoDB connection URIs, database passwords, or replica set replica hostnames.
 - Host machine private IPs or internal VPC configuration.
 - JWT signing secrets, API keys, or operational tokens.
+

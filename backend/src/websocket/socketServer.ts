@@ -42,7 +42,11 @@ export function broadcastSystemNotification(notification: {
 }
 
 export function initWebSocketServer(server: Server): WebSocketServer {
-  const wss = new WebSocketServer({ server, path: '/ws' });
+  const wss = new WebSocketServer({
+    server,
+    path: '/ws',
+    maxPayload: 64 * 1024, // 64KB max payload prevents DoS attacks
+  });
   globalWss = wss;
 
   const broadcastOnlineUsers = () => {
@@ -115,7 +119,7 @@ export function initWebSocketServer(server: Server): WebSocketServer {
           case 'presence':
             (async () => {
               const requestedRoom = message.room || 'project_general';
-              const effectiveUserId = ws.userId || message.userId;
+              const effectiveUserId = ws.userId;
 
               if (requestedRoom.startsWith('contract:') || requestedRoom.startsWith('workspace:')) {
                 const targetContractId = requestedRoom.split(':')[1];
@@ -124,8 +128,9 @@ export function initWebSocketServer(server: Server): WebSocketServer {
                   return;
                 }
 
-                if (!effectiveUserId) {
-                  ws.send(JSON.stringify({ type: 'room_join_error', room: requestedRoom, error: 'Authentication required' }));
+                // Strict authentication check: must be verified via JWT
+                if (!ws.userId) {
+                  ws.send(JSON.stringify({ type: 'room_join_error', room: requestedRoom, error: 'Authentication required. Token missing or invalid.' }));
                   return;
                 }
 
@@ -136,8 +141,8 @@ export function initWebSocketServer(server: Server): WebSocketServer {
                     return;
                   }
 
-                  const isClient = contract.clientId.toString() === effectiveUserId.toString();
-                  const isFreelancer = contract.freelancerId.toString() === effectiveUserId.toString();
+                  const isClient = contract.clientId.toString() === effectiveUserId!.toString();
+                  const isFreelancer = contract.freelancerId.toString() === effectiveUserId!.toString();
                   const isAdmin = ws.userRole === 'admin';
 
                   if (!isClient && !isFreelancer && !isAdmin) {

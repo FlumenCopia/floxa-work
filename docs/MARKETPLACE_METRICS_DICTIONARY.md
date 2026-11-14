@@ -29,3 +29,4 @@
 - [x] **No Revenue Mischaracterization:** Neither contractual budgets nor external settlements are labeled as "Gross Revenue", "Platform Sales", or "Net Volume".
 - [x] **Direct Settlement Clarity:** User-facing and admin-facing copy explicitly specifies direct bank, UPI, or external invoice settlement between independent parties.
 - [x] **Dual State Decoupling:** Deliverable approval state machine operates independently from external payment acknowledgment state machine.
+

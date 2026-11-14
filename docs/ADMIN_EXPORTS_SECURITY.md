@@ -70,3 +70,4 @@ Record ID,Contract ID,Milestone ID,Reported Amount,Currency,Payment Method,Exter
 | `moderation` | Dispute IDs, contract IDs, categories, titles, resolution statuses, creation dates. | `exports:generate` |
 
 All export actions are automatically logged in the immutable audit trail with operator identity and export type.
+

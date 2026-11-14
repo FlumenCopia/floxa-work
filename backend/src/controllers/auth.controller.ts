@@ -435,7 +435,7 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
 
     res.json({
       message: 'If that email is registered, password reset instructions have been sent.',
-      resetToken, // Provided for automated verification & environments without SMTP
+      ...(ENV.IS_PRODUCTION ? {} : { resetToken }), // Omitted in production to prevent account takeover
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Password reset request failed.' });
@@ -518,7 +518,7 @@ export async function requestEmailVerification(req: AuthenticatedRequest, res: R
 
     res.json({
       message: 'Email verification token generated.',
-      verificationToken,
+      ...(ENV.IS_PRODUCTION ? {} : { verificationToken }), // Omitted in production
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to request email verification.' });

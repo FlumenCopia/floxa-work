@@ -16,13 +16,21 @@ yarn-debug.log*
 yarn-error.log*
 
 # Environment
+.env
 .env*.local
+.env.production
+.env.staging
+
+# Backups & Database Dumps
+backups/
+backend/backups/
+*.sha256
 
 # Uploads & User Media
 backend/media/uploads/
 backend/media/temp/
+backend/media/private_vault/
 
 # OS files
 .DS_Store
 Thumbs.db
-
