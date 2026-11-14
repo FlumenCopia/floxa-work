@@ -32,3 +32,4 @@ FLOXA Work is engineered to ensure seamless readability and interaction across a
 
 ### 2.3 Post Brief Modal & Acceptance Modals
 - All modal dialogs are centered with responsive margins (`p-3 sm:p-4`), clamped to maximum heights (`max-h-[92vh]`), and provide internal `overflow-y-auto` scrolling. This guarantees that mobile keyboards do not obscure action buttons or input fields.
+

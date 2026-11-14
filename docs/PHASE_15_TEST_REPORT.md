@@ -61,3 +61,4 @@
 | Marketplace Briefs Feed | 38.68ms avg (p95: 44ms) | < 100ms | Exceeded |
 | Authenticated User Session (`/auth/me`) | 12.68ms avg (p95: 16ms) | < 50ms | Exceeded |
 | Memory Stability Under Concurrency | +24.85 MB delta (stable RSS) | No leaks | Exceeded |
+

@@ -51,3 +51,4 @@ The client experience in FLOXA Work follows a 5-stage progressive flow:
 - **Deliverable Version Inspection:** View file artifacts, version history, and revision requests.
 - **Decoupled Settlement:** Sign off on deliverable satisfaction independently of external bank confirmation.
 - **Payment Dispute Mediation:** If an external transfer is disputed, mediation is initiated directly from the workspace with non-custodial disclosures.
+

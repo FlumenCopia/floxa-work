@@ -87,3 +87,4 @@ Typography is powered by `Inter`, optimized for readability in data-dense market
   3. Actionable term review summary.
   4. Explicit secondary ("Cancel") and primary ("Confirm") buttons.
   5. Loading state animations preventing double-clicks.
+

@@ -42,3 +42,4 @@ Freelancers in FLOXA Work do not compete in a "race-to-the-bottom" price war or 
 - **Direct Settlement Invoicing:**
   - Upon deliverable signoff by the client, freelancers record their payment settlement reference (UTR, wire reference, or receipt).
   - Both parties maintain a clear, non-custodial audit trail without platform middlemen or escrow fees.
+

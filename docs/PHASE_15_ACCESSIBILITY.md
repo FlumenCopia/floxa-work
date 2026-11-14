@@ -28,3 +28,4 @@
 ### 1.4 Form Usability & Error Feedback
 - Every input field includes a descriptive `<label>` and real-time character counters.
 - Validation errors are presented inline with clear explanatory messages and iconography rather than blocking modal alerts.
+
