@@ -1,11 +1,35 @@
 import mongoose, { Schema, Model, Types } from 'mongoose';
 
-export type EscrowState = 'awaiting_deposit' | 'held_in_escrow' | 'in_review' | 'released' | 'disputed' | 'refunded';
+export type DeliverableStatus =
+  | 'draft'
+  | 'in_progress'
+  | 'submitted'
+  | 'in_review'
+  | 'revision_requested'
+  | 'resubmitted'
+  | 'approved'
+  | 'completed';
+
+export type MilestonePaymentStatus =
+  | 'not_recorded'
+  | 'reported_by_client'
+  | 'acknowledged_by_freelancer'
+  | 'disputed'
+  | 'cancelled';
 
 export interface IDeliverableSubmission {
   fileUrls: string[];
   notes: string;
   submittedAt: Date;
+}
+
+export interface IMilestonePaymentDetails {
+  paymentMethod?: string;
+  reportedAt?: Date;
+  externalReference?: string;
+  receiptFileUrl?: string;
+  acknowledgedAt?: Date;
+  disputeReason?: string;
 }
 
 export interface IMilestone {
@@ -16,8 +40,11 @@ export interface IMilestone {
   title: string;
   description: string;
   amount: number;
-  escrowState: EscrowState;
-  paymentGatewayRef?: string;
+  currency: string;
+  deliverableStatus: DeliverableStatus;
+  paymentStatus: MilestonePaymentStatus;
+  paymentDetails?: IMilestonePaymentDetails;
+  escrowState?: string; // Legacy fallback
   submissions: IDeliverableSubmission[];
   revisionRequests: {
     feedback: string;
@@ -25,7 +52,8 @@ export interface IMilestone {
   }[];
   reviewDeadline?: Date;
   approvedAt?: Date;
-  releasedAt?: Date;
+  paymentReportedAt?: Date;
+  paymentAcknowledgedAt?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -46,13 +74,40 @@ const milestoneSchema = new Schema<IMilestone>(
     title: { type: String, required: true },
     description: { type: String, default: '' },
     amount: { type: Number, required: true },
-    escrowState: {
+    currency: { type: String, default: 'USD' },
+    deliverableStatus: {
       type: String,
-      enum: ['awaiting_deposit', 'held_in_escrow', 'in_review', 'released', 'disputed', 'refunded'],
-      default: 'awaiting_deposit',
+      enum: [
+        'draft',
+        'in_progress',
+        'submitted',
+        'in_review',
+        'revision_requested',
+        'resubmitted',
+        'approved',
+        'completed',
+      ],
+      default: 'in_progress',
       index: true,
     },
-    paymentGatewayRef: { type: String, default: '' },
+    paymentStatus: {
+      type: String,
+      enum: ['not_recorded', 'reported_by_client', 'acknowledged_by_freelancer', 'disputed', 'cancelled'],
+      default: 'not_recorded',
+      index: true,
+    },
+    paymentDetails: {
+      paymentMethod: { type: String, default: '' },
+      reportedAt: { type: Date, default: null },
+      externalReference: { type: String, default: '' },
+      receiptFileUrl: { type: String, default: '' },
+      acknowledgedAt: { type: Date, default: null },
+      disputeReason: { type: String, default: '' },
+    },
+    escrowState: {
+      type: String,
+      default: 'awaiting_deposit',
+    },
     submissions: { type: [deliverableSubmissionSchema], default: [] },
     revisionRequests: [
       {
@@ -62,7 +117,8 @@ const milestoneSchema = new Schema<IMilestone>(
     ],
     reviewDeadline: { type: Date, default: null },
     approvedAt: { type: Date, default: null },
-    releasedAt: { type: Date, default: null },
+    paymentReportedAt: { type: Date, default: null },
+    paymentAcknowledgedAt: { type: Date, default: null },
   },
   {
     collection: 'milestones',
@@ -70,8 +126,11 @@ const milestoneSchema = new Schema<IMilestone>(
   }
 );
 
+// Virtual backwards compatibility
 milestoneSchema.virtual('status').get(function () {
-  return this.escrowState;
+  if (this.deliverableStatus === 'approved') return 'released';
+  if (this.deliverableStatus === 'in_review') return 'in_review';
+  return this.escrowState || 'in_progress';
 });
 
 milestoneSchema.set('toJSON', {
@@ -85,4 +144,3 @@ milestoneSchema.set('toJSON', {
 
 export const Milestone: Model<IMilestone> =
   mongoose.models.Milestone || mongoose.model<IMilestone>('Milestone', milestoneSchema);
-

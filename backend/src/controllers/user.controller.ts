@@ -41,7 +41,12 @@ export async function getUserProfile(req: AuthenticatedRequest, res: Response): 
     const activeContractsCount = contracts.filter((c) => c.status === 'active').length;
     const completedContractsCount = contracts.filter((c) => c.status === 'completed').length;
     const totalVolume = milestones
-      .filter((m) => m.escrowState === 'released')
+      .filter(
+        (m) =>
+          m.paymentStatus === 'acknowledged_by_freelancer' ||
+          m.deliverableStatus === 'approved' ||
+          m.escrowState === 'released'
+      )
       .reduce((sum, m) => sum + (m.amount || 0), 0);
 
     res.json({

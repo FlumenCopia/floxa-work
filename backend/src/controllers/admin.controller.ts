@@ -19,9 +19,17 @@ export async function getAdminPlatformStats(
     const activeContracts = await Contract.countDocuments({ status: 'active' });
     const completedContracts = await Contract.countDocuments({ status: 'completed' });
 
-    // Aggregate total released direct milestone volume
+    // Aggregate total direct milestone volume
     const volumeAgg = await Milestone.aggregate([
-      { $match: { $or: [{ escrowState: 'released' }, { status: 'released' }] } },
+      {
+        $match: {
+          $or: [
+            { paymentStatus: 'acknowledged_by_freelancer' },
+            { deliverableStatus: 'approved' },
+            { escrowState: 'released' },
+          ],
+        },
+      },
       { $group: { _id: null, totalReleased: { $sum: '$amount' } } },
     ]);
     const totalVolume = volumeAgg.length > 0 ? volumeAgg[0].totalReleased : 0;

@@ -270,7 +270,7 @@ export async function fetchMyContracts() {
   return data;
 }
 
-export async function approveMilestoneDirect(milestoneId: string) {
+export async function approveMilestoneDeliverable(milestoneId: string) {
   const token = getAuthToken();
   const res = await fetch(`${API_BASE}/milestones/${milestoneId}/approve`, {
     method: 'POST',
@@ -280,7 +280,61 @@ export async function approveMilestoneDirect(milestoneId: string) {
     },
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to approve milestone and pay talent');
+  if (!res.ok) throw new Error(data.error || 'Failed to approve deliverable');
+  return data;
+}
+
+export const approveMilestoneDirect = approveMilestoneDeliverable;
+
+export async function reportMilestonePayment(
+  milestoneId: string,
+  payload: {
+    paymentMethod: string;
+    paymentMethodDetails?: string;
+    externalReference?: string;
+    receiptFileUrl?: string;
+    notes?: string;
+  }
+) {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE}/milestones/${milestoneId}/payment/report`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to record direct payment');
+  return data;
+}
+
+export async function acknowledgeMilestonePayment(milestoneId: string) {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE}/milestones/${milestoneId}/payment/acknowledge`, {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to acknowledge payment receipt');
+  return data;
+}
+
+export async function disputeMilestonePayment(milestoneId: string, reason: string) {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE}/milestones/${milestoneId}/payment/dispute`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ reason }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to report payment discrepancy');
   return data;
 }
 

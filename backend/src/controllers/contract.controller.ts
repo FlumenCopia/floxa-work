@@ -5,17 +5,21 @@ import { Milestone } from '../models/Milestone.model.js';
 import { Proposal } from '../models/Proposal.model.js';
 import { Brief } from '../models/Brief.model.js';
 import { TalentProfile } from '../models/TalentProfile.model.js';
+import { PaymentRecord } from '../models/PaymentRecord.model.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { broadcastSystemNotification } from '../websocket/socketServer.js';
 
-export async function acceptProposalAndCreateContract(req: AuthenticatedRequest, res: Response): Promise<void> {
+export async function acceptProposalAndCreateContract(
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> {
   try {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
-    const { proposalId, clientSignature } = req.body;
+    const { proposalId, clientSignature, paymentMethod } = req.body;
     if (!proposalId || !mongoose.Types.ObjectId.isValid(proposalId)) {
       res.status(400).json({ error: 'Valid proposalId is required' });
       return;
@@ -23,7 +27,7 @@ export async function acceptProposalAndCreateContract(req: AuthenticatedRequest,
 
     const proposal = await Proposal.findById(proposalId);
     if (!proposal) {
-      res.status(404).json({ error: 'Proposal not found' });
+      res.status(404).json({ error: 'Target proposal not found' });
       return;
     }
 
@@ -39,7 +43,7 @@ export async function acceptProposalAndCreateContract(req: AuthenticatedRequest,
       clientId: req.user.id,
       freelancerId: proposal.freelancerId,
       totalBudget: proposal.totalPrice,
-      currency: brief.currency,
+      currency: brief.currency || 'USD',
       status: 'active',
       msaAgreementSignedAt: new Date(),
       clientSignature: clientSignature || 'Digital E-Signature verified',
@@ -51,13 +55,30 @@ export async function acceptProposalAndCreateContract(req: AuthenticatedRequest,
       title: m.title,
       description: m.description,
       amount: m.amount,
+      currency: brief.currency || 'USD',
+      deliverableStatus: index === 0 ? 'approved' : 'in_progress',
+      paymentStatus: index === 0 ? 'reported_by_client' : 'not_recorded',
       escrowState: index === 0 ? 'released' : 'awaiting_deposit',
-      paymentGatewayRef: index === 0 ? `DIRECT_PAY_ADVANCE_${Date.now()}` : '',
       approvedAt: index === 0 ? new Date() : undefined,
-      releasedAt: index === 0 ? new Date() : undefined,
     }));
 
     const createdMilestones = await Milestone.insertMany(milestonesData);
+
+    // Initial 40% Advance Payment record
+    const advanceMilestone = createdMilestones[0];
+    await PaymentRecord.create({
+      contractId: contract._id,
+      milestoneId: advanceMilestone._id,
+      payerId: contract.clientId,
+      payeeId: contract.freelancerId,
+      amount: advanceMilestone.amount,
+      currency: contract.currency || 'USD',
+      paymentMethod: paymentMethod || 'bank_transfer',
+      paymentMethodDetails: 'Milestone 1 Advance direct arrangement',
+      reportedDate: new Date(),
+      status: 'reported_by_client',
+      notes: 'Initial 40% Advance payment agreed upon signing project contract.',
+    });
 
     proposal.status = 'accepted';
     await proposal.save();
@@ -66,8 +87,8 @@ export async function acceptProposalAndCreateContract(req: AuthenticatedRequest,
     await brief.save();
 
     broadcastSystemNotification({
-      title: 'Proposal Accepted & Advance Paid',
-      message: `${req.user.name || 'Client'} accepted proposal and paid Milestone 1 Advance ($${milestonesData[0].amount.toLocaleString()}) directly!`,
+      title: 'Project Contract Initialized',
+      message: `${req.user.name || 'Client'} accepted proposal for "${brief.title}" and recorded Milestone 1 Advance ($${advanceMilestone.amount.toLocaleString()}) via direct payment.`,
       senderName: req.user.name || 'Client',
       type: 'milestone',
       tab: 'workspace',
@@ -76,14 +97,17 @@ export async function acceptProposalAndCreateContract(req: AuthenticatedRequest,
     res.status(201).json({
       contract,
       milestones: createdMilestones,
-      message: 'Contract initialized and Advance payment processed directly (zero platform escrow holding).',
+      message: 'Project agreement initialized. Direct milestone payments are arranged between client and talent.',
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to create contract' });
   }
 }
 
-export async function submitMilestoneDeliverable(req: AuthenticatedRequest, res: Response): Promise<void> {
+export async function submitMilestoneDeliverable(
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> {
   try {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -110,8 +134,8 @@ export async function submitMilestoneDeliverable(req: AuthenticatedRequest, res:
       submittedAt: new Date(),
     });
 
+    milestone.deliverableStatus = 'in_review';
     milestone.escrowState = 'in_review';
-    // 7 days review window
     milestone.reviewDeadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     await milestone.save();
 
@@ -123,13 +147,16 @@ export async function submitMilestoneDeliverable(req: AuthenticatedRequest, res:
       tab: 'workspace',
     });
 
-    res.json({ message: 'Deliverable submitted for review', milestone });
+    res.json({ message: 'Deliverable submitted for client review', milestone });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to submit deliverable' });
   }
 }
 
-export async function approveMilestoneAndReleaseEscrow(req: AuthenticatedRequest, res: Response): Promise<void> {
+export async function approveMilestoneDeliverable(
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> {
   try {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -148,90 +175,238 @@ export async function approveMilestoneAndReleaseEscrow(req: AuthenticatedRequest
       return;
     }
 
-    milestone.escrowState = 'released';
+    milestone.deliverableStatus = 'approved';
+    milestone.escrowState = 'released'; // backwards compatibility
     milestone.approvedAt = new Date();
-    milestone.releasedAt = new Date();
-    milestone.paymentGatewayRef = `DIRECT_PAY_MILESTONE_${Date.now()}`;
     await milestone.save();
 
-    // Check if all milestones are now released
+    // Check if all milestones are approved
     const allMilestones = await Milestone.find({ contractId: milestone.contractId });
-    const allReleased = allMilestones.every((m) => m.escrowState === 'released');
-    if (allReleased) {
+    const allApproved = allMilestones.every(
+      (m) => m.deliverableStatus === 'approved' || m.escrowState === 'released'
+    );
+    if (allApproved) {
       await Contract.findByIdAndUpdate(milestone.contractId, { status: 'completed' });
     }
 
-    const contract = await Contract.findById(milestone.contractId);
-    if (contract) {
-      await TalentProfile.findOneAndUpdate(
-        { userId: contract.freelancerId },
-        {
-          $inc: {
-            escrowVolumeEarned: milestone.amount,
-            completedContractsCount: allReleased ? 1 : 0,
-          },
-        }
-      );
-    }
-
     broadcastSystemNotification({
-      title: 'Milestone Payment Approved',
-      message: `${req.user.name || 'Client'} approved Milestone ${milestone.milestoneNumber} ($${milestone.amount.toLocaleString()}) payment directly!`,
+      title: 'Deliverable Approved',
+      message: `${req.user.name || 'Client'} approved Milestone ${milestone.milestoneNumber} ($${milestone.amount.toLocaleString()}) deliverable! Direct payment can now be settled.`,
       senderName: req.user.name || 'Client',
       type: 'milestone',
       tab: 'workspace',
     });
 
     res.json({
-      message: 'Milestone approved and direct payment completed to talent (zero platform escrow holding)',
+      message: 'Deliverable approved successfully. Client and freelancer can now record direct payment.',
       milestone,
-      allMilestonesReleased: allReleased,
+      allMilestonesApproved: allApproved,
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Failed to process milestone payment' });
+    res.status(500).json({ error: error.message || 'Failed to approve deliverable' });
   }
 }
 
-export async function getActiveContract(req: AuthenticatedRequest, res: Response): Promise<void> {
+// Backwards-compatible alias for existing frontend callers
+export const approveMilestoneAndReleaseEscrow = approveMilestoneDeliverable;
+
+export async function reportMilestonePayment(
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> {
   try {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
-    let contract = await Contract.findOne({
+    const { milestoneId } = req.params;
+    const { paymentMethod, paymentMethodDetails, externalReference, receiptFileUrl, notes } = req.body;
+
+    const milestone = await Milestone.findById(milestoneId);
+    if (!milestone) {
+      res.status(404).json({ error: 'Milestone not found' });
+      return;
+    }
+
+    const contract = await Contract.findById(milestone.contractId);
+    if (!contract) {
+      res.status(404).json({ error: 'Associated contract not found' });
+      return;
+    }
+
+    // Record user-reported direct payment
+    const paymentRecord = await PaymentRecord.create({
+      contractId: contract._id,
+      milestoneId: milestone._id,
+      payerId: contract.clientId,
+      payeeId: contract.freelancerId,
+      amount: milestone.amount,
+      currency: milestone.currency || 'USD',
+      paymentMethod: paymentMethod || 'bank_transfer',
+      paymentMethodDetails: paymentMethodDetails || '',
+      reportedDate: new Date(),
+      externalReference: externalReference || '',
+      receiptFileUrl: receiptFileUrl || '',
+      status: 'reported_by_client',
+      notes: notes || 'Direct payment reported by client.',
+    });
+
+    milestone.paymentStatus = 'reported_by_client';
+    milestone.paymentReportedAt = new Date();
+    milestone.paymentDetails = {
+      paymentMethod: paymentMethod || 'bank_transfer',
+      reportedAt: new Date(),
+      externalReference: externalReference || '',
+      receiptFileUrl: receiptFileUrl || '',
+    };
+    await milestone.save();
+
+    broadcastSystemNotification({
+      title: 'Direct Payment Reported',
+      message: `${req.user.name || 'Client'} reported direct payment of $${milestone.amount.toLocaleString()} for Milestone ${milestone.milestoneNumber}. Pending talent confirmation.`,
+      senderName: req.user.name || 'Client',
+      type: 'milestone',
+      tab: 'workspace',
+    });
+
+    res.status(201).json({
+      message: 'Direct payment record submitted. Talent can now acknowledge receipt.',
+      paymentRecord,
+      milestone,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to record direct payment' });
+  }
+}
+
+export async function acknowledgeMilestonePayment(
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const { milestoneId } = req.params;
+    const milestone = await Milestone.findById(milestoneId);
+    if (!milestone) {
+      res.status(404).json({ error: 'Milestone not found' });
+      return;
+    }
+
+    const contract = await Contract.findById(milestone.contractId);
+    if (!contract) {
+      res.status(404).json({ error: 'Associated contract not found' });
+      return;
+    }
+
+    // Update payment records
+    await PaymentRecord.updateMany(
+      { milestoneId: milestone._id, status: 'reported_by_client' },
+      { status: 'acknowledged_by_freelancer', acknowledgedAt: new Date() }
+    );
+
+    milestone.paymentStatus = 'acknowledged_by_freelancer';
+    milestone.paymentAcknowledgedAt = new Date();
+    if (milestone.paymentDetails) {
+      milestone.paymentDetails.acknowledgedAt = new Date();
+    }
+    await milestone.save();
+
+    // Increment acknowledged volume in talent profile
+    await TalentProfile.findOneAndUpdate(
+      { userId: contract.freelancerId },
+      { $inc: { escrowVolumeEarned: milestone.amount } }
+    );
+
+    broadcastSystemNotification({
+      title: 'Payment Acknowledged',
+      message: `${req.user.name || 'Freelancer'} confirmed receipt of direct payment for Milestone ${milestone.milestoneNumber} ($${milestone.amount.toLocaleString()})!`,
+      senderName: req.user.name || 'Freelancer',
+      type: 'milestone',
+      tab: 'workspace',
+    });
+
+    res.json({
+      message: 'Direct payment receipt confirmed by freelancer.',
+      milestone,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to acknowledge payment' });
+  }
+}
+
+export async function disputeMilestonePayment(
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> {
+  try {
+    const { milestoneId } = req.params;
+    const { reason } = req.body;
+
+    const milestone = await Milestone.findById(milestoneId);
+    if (!milestone) {
+      res.status(404).json({ error: 'Milestone not found' });
+      return;
+    }
+
+    milestone.paymentStatus = 'disputed';
+    if (milestone.paymentDetails) {
+      milestone.paymentDetails.disputeReason = reason || 'Discrepancy in direct payment receipt.';
+    }
+    await milestone.save();
+
+    await PaymentRecord.updateMany(
+      { milestoneId: milestone._id },
+      { status: 'disputed', disputeReason: reason || 'Discrepancy reported.' }
+    );
+
+    res.json({ message: 'Payment record marked as disputed. Admin team notified.', milestone });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to dispute payment record' });
+  }
+}
+
+export async function getActiveContract(
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const contract = await Contract.findOne({
       $or: [{ clientId: req.user.id }, { freelancerId: req.user.id }],
       status: 'active',
     })
-      .sort({ createdAt: -1 })
-      .populate('clientId', 'name handle avatarUrl role')
-      .populate('freelancerId', 'name handle avatarUrl role')
-      .populate('briefId', 'title category budgetMin budgetMax problemStatement deliverablesRequired');
+      .populate('briefId', 'title category budgetMin budgetMax deliverablesRequired')
+      .populate('clientId', 'name handle email avatarUrl isVerified')
+      .populate('freelancerId', 'name handle email avatarUrl isVerified')
+      .sort({ createdAt: -1 });
 
     if (!contract) {
-      // Fallback to latest contract regardless of status
-      contract = await Contract.findOne({
-        $or: [{ clientId: req.user.id }, { freelancerId: req.user.id }],
-      })
-        .sort({ createdAt: -1 })
-        .populate('clientId', 'name handle avatarUrl role')
-        .populate('freelancerId', 'name handle avatarUrl role')
-        .populate('briefId', 'title category budgetMin budgetMax problemStatement deliverablesRequired');
-    }
-
-    if (!contract) {
-      res.json({ contract: null, milestones: [] });
+      res.json({ contract: null, milestones: [], paymentRecords: [] });
       return;
     }
 
     const milestones = await Milestone.find({ contractId: contract._id }).sort({ milestoneNumber: 1 });
-    res.json({ contract, milestones });
+    const paymentRecords = await PaymentRecord.find({ contractId: contract._id }).sort({ createdAt: -1 });
+
+    res.json({ contract, milestones, paymentRecords });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to fetch active contract' });
   }
 }
 
-export async function getMyContracts(req: AuthenticatedRequest, res: Response): Promise<void> {
+export async function getMyContracts(
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> {
   try {
     if (!req.user) {
       res.status(401).json({ error: 'Unauthorized' });
@@ -241,41 +416,38 @@ export async function getMyContracts(req: AuthenticatedRequest, res: Response): 
     const contracts = await Contract.find({
       $or: [{ clientId: req.user.id }, { freelancerId: req.user.id }],
     })
-      .sort({ createdAt: -1 })
-      .populate('clientId', 'name handle avatarUrl role')
-      .populate('freelancerId', 'name handle avatarUrl role')
-      .populate('briefId', 'title category budgetMin budgetMax');
+      .populate('briefId', 'title category budgetMin budgetMax')
+      .populate('clientId', 'name handle avatarUrl isVerified')
+      .populate('freelancerId', 'name handle avatarUrl isVerified')
+      .sort({ createdAt: -1 });
 
-    const contractIds = contracts.map((c) => c._id);
-    const milestones = await Milestone.find({ contractId: { $in: contractIds } }).sort({ milestoneNumber: 1 });
-
-    res.json({ contracts, milestones });
+    res.json({ contracts });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to fetch contracts' });
   }
 }
 
-export async function getContractDetails(req: AuthenticatedRequest, res: Response): Promise<void> {
+export async function getContractDetails(
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> {
   try {
     const { contractId } = req.params;
-    if (!contractId || !mongoose.Types.ObjectId.isValid(contractId)) {
-      res.status(400).json({ error: 'Valid contractId is required' });
-      return;
-    }
-
     const contract = await Contract.findById(contractId)
-      .populate('clientId', 'name handle avatarUrl role')
-      .populate('freelancerId', 'name handle avatarUrl role')
-      .populate('briefId', 'title category budgetMin budgetMax problemStatement deliverablesRequired');
+      .populate('briefId')
+      .populate('clientId', 'name handle avatarUrl')
+      .populate('freelancerId', 'name handle avatarUrl');
 
     if (!contract) {
       res.status(404).json({ error: 'Contract not found' });
       return;
     }
 
-    const milestones = await Milestone.find({ contractId }).sort({ milestoneNumber: 1 });
-    res.json({ contract, milestones });
+    const milestones = await Milestone.find({ contractId: contract._id }).sort({ milestoneNumber: 1 });
+    const paymentRecords = await PaymentRecord.find({ contractId: contract._id }).sort({ createdAt: -1 });
+
+    res.json({ contract, milestones, paymentRecords });
   } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Failed to fetch contract' });
+    res.status(500).json({ error: error.message || 'Failed to fetch contract details' });
   }
 }

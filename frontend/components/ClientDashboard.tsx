@@ -11,7 +11,7 @@ import {
   CheckCircle2,
   Inbox,
 } from 'lucide-react';
-import { fetchBriefs, fetchMyProposals, acceptProposalAndFundEscrow } from '@/lib/api';
+import { fetchBriefs, fetchMyProposals, acceptProposalAndPayAdvance } from '@/lib/api';
 import { WorkspaceView } from './WorkspaceView';
 
 interface ClientDashboardProps {
@@ -52,9 +52,9 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
     loadData();
   }, []);
 
-  const handleApproveEscrow = async (proposalId: string) => {
+  const handleAcceptProposal = async (proposalId: string) => {
     try {
-      await acceptProposalAndFundEscrow(proposalId);
+      await acceptProposalAndPayAdvance(proposalId);
       setAcceptedProposalId(proposalId);
       onEscrowReleased();
       loadData();
@@ -271,14 +271,14 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                     {isAccepted ? (
                       <span className="px-4 py-2 rounded-full bg-[#e0f2fe] text-[#0284c7] border border-[#bae6fd] text-xs font-bold flex items-center justify-center gap-1.5 w-full sm:w-auto">
                         <CheckCircle2 size={14} />
-                        <span>Proposal Accepted & Advance Paid</span>
+                        <span>Agreement Signed & Advance Arranged</span>
                       </span>
                     ) : (
                       <button
-                        onClick={() => handleApproveEscrow(proposal._id || proposal.id)}
+                        onClick={() => handleAcceptProposal(proposal._id || proposal.id)}
                         className="btn-cyan-pill text-xs px-4 sm:px-5 py-2.5 w-full sm:w-auto text-center justify-center"
                       >
-                        <span>Accept Proposal & Pay Advance (${Math.round((proposal.totalPrice || 2400) * 0.4).toLocaleString()})</span>
+                        <span>Accept Proposal & Start Project (${Math.round((proposal.totalPrice || 2400) * 0.4).toLocaleString()} Advance)</span>
                       </button>
                     )}
                   </div>

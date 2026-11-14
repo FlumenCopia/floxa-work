@@ -181,8 +181,8 @@ async function runTests() {
   assert.strictEqual(delivJson.milestone.escrowState || delivJson.milestone.status, 'in_review');
   console.log('   ✓ Milestone 2 moved to "in_review" window.\n');
 
-  // 9. Client approves Milestone 2 and pays directly
-  console.log('9. Client approving Milestone 2 & releasing payment directly...');
+  // 9. Client approves Milestone 2 deliverable
+  console.log('9. Client approving Milestone 2 deliverable...');
   const approveRes = await fetch(`${BASE_URL}/api/milestones/${m2._id || m2.id}/approve`, {
     method: 'POST',
     headers: {
@@ -192,12 +192,46 @@ async function runTests() {
   });
   assert.strictEqual(approveRes.status, 200);
   const approveJson = await approveRes.json();
-  assert.strictEqual(approveJson.milestone.escrowState || approveJson.milestone.status, 'released');
-  assert.ok(approveJson.milestone.paymentGatewayRef, 'Payment reference missing');
-  console.log(`   ✓ Milestone 2 approved! Status: ${approveJson.milestone.status}, Ref: ${approveJson.milestone.paymentGatewayRef}\n`);
+  assert.strictEqual(approveJson.milestone.deliverableStatus || approveJson.milestone.status, 'approved');
+  console.log(`   ✓ Milestone 2 deliverable approved! (Deliverable status: approved, Zero platform custody)\n`);
 
-  // 10. Admin Operations & KYC Endpoint Verification
-  console.log('10. Verifying Admin Portal & Platform Analytics...');
+  // 10. Client reports direct payment outside the platform
+  console.log('10. Client recording external direct payment details...');
+  const reportPaymentRes = await fetch(`${BASE_URL}/api/milestones/${m2._id || m2.id}/payment/report`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${clientToken}`,
+    },
+    body: JSON.stringify({
+      paymentMethod: 'bank_transfer',
+      paymentMethodDetails: 'HDFC Direct Wire Transfer',
+      externalReference: 'UTR-20261114-9842187',
+      receiptFileUrl: uploadedFile.downloadUrl,
+      notes: 'Direct bank transfer initiated for Milestone 2.',
+    }),
+  });
+  assert.strictEqual(reportPaymentRes.status, 201);
+  const reportPaymentJson = await reportPaymentRes.json();
+  assert.strictEqual(reportPaymentJson.milestone.paymentStatus, 'reported_by_client');
+  assert.ok(reportPaymentJson.paymentRecord.id);
+  console.log(`   ✓ Direct payment reported in MongoDB by client (UTR: ${reportPaymentJson.paymentRecord.externalReference})\n`);
+
+  // 11. Freelancer acknowledges receiving direct payment
+  console.log('11. Freelancer acknowledging direct payment receipt in external account...');
+  const ackRes = await fetch(`${BASE_URL}/api/milestones/${m2._id || m2.id}/payment/acknowledge`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${freelancerToken}`,
+    },
+  });
+  assert.strictEqual(ackRes.status, 200);
+  const ackJson = await ackRes.json();
+  assert.strictEqual(ackJson.milestone.paymentStatus, 'acknowledged_by_freelancer');
+  console.log('   ✓ Direct payment acknowledged and confirmed by talent.\n');
+
+  // 12. Admin Operations & KYC Endpoint Verification
+  console.log('12. Verifying Admin Portal & Platform Analytics...');
   const adminStatsRes = await fetch(`${BASE_URL}/api/admin/stats`, {
     headers: { Authorization: `Bearer ${clientToken}` },
   });
@@ -205,11 +239,11 @@ async function runTests() {
   const adminStatsJson = await adminStatsRes.json();
   assert.ok(adminStatsJson.stats.totalUsers > 0);
   assert.ok(adminStatsJson.stats.totalContracts > 0);
-  assert.ok(adminStatsJson.stats.totalVolume >= 1920, 'Volume must include released milestones');
+  assert.ok(adminStatsJson.stats.totalVolume >= 1920, 'Volume must include direct milestone settled amounts');
   console.log(`   ✓ Admin statistics verified: Total Volume: $${adminStatsJson.stats.totalVolume.toLocaleString()} across ${adminStatsJson.stats.totalContracts} contracts.\n`);
 
-  // 11. Profile Update Verification
-  console.log('11. Verifying Profile Update & Persistence...');
+  // 13. Profile Update Verification
+  console.log('13. Verifying Profile Update & Persistence...');
   const profileUpdateRes = await fetch(`${BASE_URL}/api/users/profile`, {
     method: 'PUT',
     headers: {

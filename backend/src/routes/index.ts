@@ -10,7 +10,10 @@ import {
 import {
   acceptProposalAndCreateContract,
   submitMilestoneDeliverable,
-  approveMilestoneAndReleaseEscrow,
+  approveMilestoneDeliverable,
+  reportMilestonePayment,
+  acknowledgeMilestonePayment,
+  disputeMilestonePayment,
   getActiveContract,
   getMyContracts,
   getContractDetails,
@@ -63,13 +66,16 @@ router.post('/proposals', requireAuth, submitMiniDiscoveryProposal);
 router.get('/proposals/me', requireAuth, getMyProposals);
 router.get('/briefs/:briefId/proposals', requireAuth, getBriefProposals);
 
-// Contracts & Direct Escrow Milestones
+// Contracts & Direct Milestone Billing (0% Platform Custody)
 router.post('/contracts', requireAuth, acceptProposalAndCreateContract);
 router.get('/contracts/active', requireAuth, getActiveContract);
 router.get('/contracts/me', requireAuth, getMyContracts);
 router.get('/contracts/:contractId', requireAuth, getContractDetails);
 router.post('/milestones/:milestoneId/deliverable', requireAuth, submitMilestoneDeliverable);
-router.post('/milestones/:milestoneId/approve', requireAuth, approveMilestoneAndReleaseEscrow);
+router.post('/milestones/:milestoneId/approve', requireAuth, approveMilestoneDeliverable);
+router.post('/milestones/:milestoneId/payment/report', requireAuth, reportMilestonePayment);
+router.post('/milestones/:milestoneId/payment/acknowledge', requireAuth, acknowledgeMilestonePayment);
+router.post('/milestones/:milestoneId/payment/dispute', requireAuth, disputeMilestonePayment);
 
 // Centralized File Storage (Upload, Download, Inline View)
 router.post('/files/upload', requireAuth, uploadMiddleware.single('file'), uploadSingleFile);

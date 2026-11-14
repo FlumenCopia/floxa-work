@@ -7,4 +7,5 @@ export * from './Contract.model.js';
 export * from './Milestone.model.js';
 export * from './ChatMessage.model.js';
 export * from './File.model.js';
+export * from './PaymentRecord.model.js';
 
