@@ -40,3 +40,4 @@ The FLOXA Work automated CI/CD pipeline enforces 8 strict quality gates before a
 - All CI secrets are supplied through GitHub Repository Secrets (`ACTIONS_RUNNER_SECRET`).
 - Zero production credentials exist in workflow YAML files.
 - The pipeline executes against isolated ephemeral MongoDB containers with random cryptographic seeds.
+

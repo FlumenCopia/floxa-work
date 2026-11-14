@@ -53,3 +53,4 @@
 3. **Immutability (Object Lock / WORM):** Weekly and monthly compliance archives enable cloud object locking to prevent ransomware deletion.
 4. **Automated Verification:** Every backup archive executes a SHA-256 integrity checksum verification and test extraction into an isolated validation database (`floxa_work_db_restore_test`).
 5. **Zero Secret Leakage:** Backup scripts consume database URIs via secured environment variables. Passwords and keys are never printed in console output or stored in unencrypted log files.
+

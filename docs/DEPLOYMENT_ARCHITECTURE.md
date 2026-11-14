@@ -59,3 +59,4 @@
 | **Database** | MongoDB Atlas (M10+) | 3-Node Replica Set (Primary + 2 Secondaries) | Cross-AZ with automated failover |
 | **Storage Vault**| Cloudflare R2 / S3 | Object storage with private bucket ACL | 99.999999999% Durability |
 | **Real-Time WSS**| `ws` on Express port 5001| Sticky sessions on reverse proxy / Redis pubsub | Multi-process worker pool |
+

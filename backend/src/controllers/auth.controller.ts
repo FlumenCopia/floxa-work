@@ -8,6 +8,7 @@ import { Session } from '../models/Session.model.js';
 import { AuditLog } from '../models/AuditLog.model.js';
 import { ENV } from '../config/env.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { emailService } from '../services/email/emailService.js';
 
 // Helper to hash refresh tokens
 function hashToken(token: string): string {
@@ -433,6 +434,16 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
       metadata: { email: user.email },
     });
 
+    // Non-blocking transactional email dispatch
+    emailService.sendEmail({
+      to: user.email,
+      subject: 'FLOXA Work — Password Reset Request',
+      text: `Hello ${user.name},\n\nYou requested a password reset for your FLOXA Work account. Use the following token to reset your password within 1 hour:\n\n${resetToken}\n\nIf you did not request this, please ignore this email.`,
+      category: 'security_alert',
+    }).catch((err) => {
+      console.warn('[Email Warning] Failed to dispatch password reset email:', err.message);
+    });
+
     res.json({
       message: 'If that email is registered, password reset instructions have been sent.',
       ...(ENV.IS_PRODUCTION ? {} : { resetToken }), // Omitted in production to prevent account takeover
@@ -515,6 +526,16 @@ export async function requestEmailVerification(req: AuthenticatedRequest, res: R
     user.emailVerificationTokenHash = tokenHash;
     user.emailVerificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     await user.save();
+
+    // Non-blocking transactional email dispatch
+    emailService.sendEmail({
+      to: user.email,
+      subject: 'FLOXA Work — Verify Your Email Address',
+      text: `Hello ${user.name},\n\nPlease verify your email address on FLOXA Work using the following token:\n\n${verificationToken}\n\nThis token will expire in 24 hours.`,
+      category: 'auth',
+    }).catch((err) => {
+      console.warn('[Email Warning] Failed to dispatch email verification:', err.message);
+    });
 
     res.json({
       message: 'Email verification token generated.',

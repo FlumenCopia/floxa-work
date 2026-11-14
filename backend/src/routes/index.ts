@@ -147,6 +147,7 @@ router.post('/auth/sessions/revoke-all-others', requireAuth, revokeAllOtherSessi
 router.post('/auth/forgot-password', authRateLimiter, forgotPassword);
 router.post('/auth/reset-password', authRateLimiter, resetPassword);
 router.post('/auth/request-email-verification', requireAuth, requestEmailVerification);
+router.post('/auth/verify-email/request', requireAuth, requestEmailVerification);
 router.post('/auth/verify-email', authRateLimiter, verifyEmail);
 router.get('/auth/me', requireAuth, getMe);
 
@@ -176,6 +177,10 @@ router.post('/proposals/:id/shortlist', requireAuth, shortlistProposal);
 router.post('/proposals/:id/decline', requireAuth, declineProposal);
 router.post('/proposals/:id/withdraw', requireAuth, withdrawProposal);
 router.get('/briefs/:briefId/proposals', requireAuth, getBriefProposals);
+router.post('/briefs/:briefId/proposals', requireAuth, (req, res) => {
+  req.body.briefId = req.params.briefId;
+  submitMiniDiscoveryProposal(req, res);
+});
 
 // Phase 9: Advanced Discovery & Search Engine
 router.get('/discovery/freelancers', searchFreelancers);
@@ -204,6 +209,10 @@ router.put('/invitations/:id/cancel', requireAuth, cancelInvitation);
 
 // Contracts & Direct Milestone Billing (0% Platform Custody)
 router.post('/contracts', requireAuth, acceptProposalAndCreateContract);
+router.post('/proposals/:proposalId/accept', requireAuth, (req, res) => {
+  req.body.proposalId = req.params.proposalId;
+  acceptProposalAndCreateContract(req, res);
+});
 router.get('/contracts/active', requireAuth, getActiveContract);
 router.get('/contracts/me', requireAuth, getMyContracts);
 router.get('/contracts/:contractId', requireAuth, getContractDetails);

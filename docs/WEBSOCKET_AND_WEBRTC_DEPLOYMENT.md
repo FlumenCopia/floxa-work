@@ -54,3 +54,4 @@ WebRTC audio and video calls operate peer-to-peer directly between client browse
    - In enterprise or restricted mobile networks, peer-to-peer UDP is blocked. A TURN (Traversal Using Relays around NAT) relay is mandatory.
    - Recommended Production TURN Services: Cloudflare Calls, Twilio Network Traversal, or self-hosted `coturn`.
    - **Zero Hardcoded Secrets:** TURN credentials must be generated dynamically as short-lived ephemeral tokens (valid for 1–2 hours) and never hardcoded in client bundles.
+

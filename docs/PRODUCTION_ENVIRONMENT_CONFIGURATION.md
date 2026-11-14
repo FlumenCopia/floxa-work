@@ -77,3 +77,4 @@ FLOXA Work configuration strictly decouples source code from runtime credentials
 │  - Hardened CORS: https://floxa.work                   │
 └────────────────────────────────────────────────────────┘
 ```
+

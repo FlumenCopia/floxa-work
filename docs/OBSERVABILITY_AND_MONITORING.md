@@ -74,3 +74,4 @@ The logging framework strictly redacts:
 3. Reset tokens and email verification tokens.
 4. Database connection strings containing user/password credentials.
 5. Authorization bearer tokens in headers.
+

@@ -41,3 +41,4 @@ In development or staging environments without SMTP credentials, emails are writ
 
 - **Status:** **UNVERIFIED / PENDING EXTERNAL CREDENTIALS**
 - **Assessment:** The application is architected with complete email abstractions (`EmailService`), but requires an active third-party SMTP account (Mailgun/SendGrid/SES) in production before public launch. Persistent in-app notifications and WebSocket alerts operate independently.
+

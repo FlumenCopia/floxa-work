@@ -78,3 +78,4 @@ jobs:
           NEXT_PUBLIC_API_URL: https://api.floxa.work/api
           NEXT_PUBLIC_WS_URL: wss://api.floxa.work/ws
         run: npm run build
+

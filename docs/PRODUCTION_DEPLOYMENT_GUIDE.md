@@ -61,3 +61,4 @@ curl -f https://api.floxa.work/health/live
 curl -f https://api.floxa.work/health/ready
 ```
 Verify that `status === 'ready'` and `database.status === 'connected'`.
+

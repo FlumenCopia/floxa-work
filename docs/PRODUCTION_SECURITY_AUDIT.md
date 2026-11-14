@@ -35,3 +35,4 @@ The platform architecture implements defense-in-depth protections across all lay
 
 1. **Email Provider Credential Provisioning:** Production transactional SMTP credentials must be supplied via environment variables before public user registration is enabled.
 2. **TURN Server Ephemeral Secret Management:** For WebRTC audio/video calling behind symmetric enterprise firewalls, short-lived ephemeral TURN credentials should be generated via cloud edge workers.
+

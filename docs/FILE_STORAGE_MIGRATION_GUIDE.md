@@ -37,3 +37,4 @@ S3_SECRET_ACCESS_KEY=<r2-api-secret-access-key>
 ### Migration Verification Status
 - **Local Private Vault Adapter:** Fully operational and tested.
 - **S3/R2 Adapter:** Fully implemented; health endpoint reports `status: 'unverified'` if credentials are not configured, maintaining non-breaking zero-downtime operations.
+

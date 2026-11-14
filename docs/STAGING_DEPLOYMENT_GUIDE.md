@@ -57,3 +57,4 @@ cd ../frontend && pm2 start "npm run start -- -p 3001" --name "floxa-frontend-st
 curl -f http://localhost:5001/health/live
 curl -f http://localhost:5001/health/ready
 ```
+

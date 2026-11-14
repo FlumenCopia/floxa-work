@@ -41,3 +41,4 @@ Because FLOXA Work employs non-destructive index migrations and append-only sche
    db.contracts.dropIndex("problematic_index_name");
    ```
 3. If database restoration is required, execute `backend/scripts/restore-database.cjs` with the pre-deployment snapshot archive.
+

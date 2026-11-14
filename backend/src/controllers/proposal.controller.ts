@@ -30,7 +30,9 @@ export async function submitMiniDiscoveryProposal(req: AuthenticatedRequest, res
       freelancerIntro,
     } = req.body;
 
-    if (!briefId || !totalPrice || !proposedMilestones || (!diagnosticAnswers && !problemDiagnosis)) {
+    const effectiveTotalPrice = Number(totalPrice || req.body.totalBudget);
+
+    if (!briefId || !effectiveTotalPrice || !proposedMilestones || (!diagnosticAnswers && !problemDiagnosis)) {
       res.status(400).json({
         error: 'Missing required proposal fields: briefId, totalPrice, proposedMilestones, and problem diagnosis are required.',
       });
@@ -78,7 +80,7 @@ export async function submitMiniDiscoveryProposal(req: AuthenticatedRequest, res
     }
 
     const milestoneSum = normalizedMilestones.reduce((acc: number, m: any) => acc + m.amount, 0);
-    const parsedTotal = Math.round(Number(totalPrice));
+    const parsedTotal = Math.round(Number(effectiveTotalPrice));
 
     if (Math.abs(milestoneSum - parsedTotal) > 2) {
       res.status(400).json({

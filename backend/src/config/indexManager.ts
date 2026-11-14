@@ -74,3 +74,4 @@ export async function syncAndVerifyDatabaseIndexes(): Promise<IndexAuditReport[]
 
   return reports;
 }
+

@@ -53,8 +53,8 @@ export const ENV = {
   
   // Database Pool & Timeout Settings
   DATABASE_URL: process.env.DATABASE_URL || 'mongodb://127.0.0.1:27017/floxa_work_db',
-  DB_MAX_POOL_SIZE: parseInt(process.env.DB_MAX_POOL_SIZE || '50', 10),
-  DB_MIN_POOL_SIZE: parseInt(process.env.DB_MIN_POOL_SIZE || '5', 10),
+  DB_MAX_POOL_SIZE: parseInt(process.env.DB_MAX_POOL_SIZE || '25', 10), // Lean pool size protects shared MongoDB Atlas connection limits
+  DB_MIN_POOL_SIZE: parseInt(process.env.DB_MIN_POOL_SIZE || '2', 10),
   DB_SERVER_SELECTION_TIMEOUT_MS: parseInt(process.env.DB_SERVER_SELECTION_TIMEOUT_MS || '5000', 10),
   DB_CONNECT_TIMEOUT_MS: parseInt(process.env.DB_CONNECT_TIMEOUT_MS || '10000', 10),
 
