@@ -60,7 +60,7 @@ DATABASE_URL=mongodb://floxa_work_app_user:REPLACE_WITH_STRONG_PASSWORD@127.0.0.
 MONGODB_URI=mongodb://floxa_work_app_user:REPLACE_WITH_STRONG_PASSWORD@127.0.0.1:27017/floxa_work_prod?authSource=floxa_work_prod
 JWT_ACCESS_SECRET=REPLACE_WITH_64_CHAR_HEX
 JWT_REFRESH_SECRET=REPLACE_WITH_64_CHAR_HEX
-CORS_ORIGIN=https://floxa.flumenx.in,https://work.flumenx.in,https://app.floxa.work
+CORS_ORIGIN=https://work.flumenx.in,https://floxawork.flumenx.in,https://work-app.flumenx.in,https://app.floxa.work
 TRUST_PROXY=true
 STORAGE_PROVIDER=local
 STORAGE_LOCAL_ROOT=/home/floxa/private_vault
@@ -73,8 +73,8 @@ if [ ! -f /etc/floxa/frontend.env ]; then
     cat << 'EOF' > /etc/floxa/frontend.env
 NODE_ENV=production
 PORT=3001
-NEXT_PUBLIC_API_URL=https://api-floxa.flumenx.in/api
-NEXT_PUBLIC_WS_URL=wss://api-floxa.flumenx.in/ws
+NEXT_PUBLIC_API_URL=https://api-work.flumenx.in/api
+NEXT_PUBLIC_WS_URL=wss://api-work.flumenx.in/ws
 EOF
 fi
 

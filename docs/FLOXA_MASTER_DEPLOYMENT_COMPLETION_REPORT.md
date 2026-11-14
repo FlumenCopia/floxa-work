@@ -42,7 +42,7 @@ To maintain complete operational honesty, every component of the deployment is c
 | **6** | **Frontend Deployment** | Next.js 16.2 Turbopack production SSR server bound to `127.0.0.1:3001` via `floxa-frontend.service`. |
 | **7** | **WebSocket Verification** | RFC 6455 persistent connections on `/ws` with 30s heartbeat keepalive. CloudPanel Nginx vhost configured with `Upgrade` headers. |
 | **8** | **Nginx & CloudPanel Integration** | Native CloudPanel Vhost configurations prepared (`scripts/cloudpanel/nginx_vhost_*.conf`). Zero global Nginx overwrite. |
-| **9** | **Domain & HTTPS Verification** | `floxa.flumenx.in` and `api-floxa.flumenx.in` point via A-records to `89.116.121.25`. CloudPanel automatic Let's Encrypt SSL active. |
+| **9** | **Domain & HTTPS Verification** | `work.flumenx.in` and `api-work.flumenx.in` point via A-records to `89.116.121.25`. CloudPanel automatic Let's Encrypt SSL active. |
 | **10** | **Private File Storage** | Persistent private vault in `/home/floxa/private_vault/` (`chmod 700`, owner `floxa:floxa`). Server-side auth enforced. 50 MB limit. |
 | **11** | **Email Delivery** | Resend API or Hostinger SMTP configured. Fail-safe console logger fallback active for non-blocking onboarding. |
 | **12** | **Backup & Restore** | Daily cron backup script `scripts/cloudpanel/backup_floxa.sh` (mongodump + vault tarball + SHA-256 manifests). Non-destructive restore drill passed. |
@@ -52,7 +52,7 @@ To maintain complete operational honesty, every component of the deployment is c
 | **16** | **Client Journey** | 12-step synthetic journey verified (Registration -> Brief -> Accept Proposal -> Workspace -> Approve Deliverable -> Record Payment -> Review). |
 | **17** | **Freelancer Journey** | 12-step synthetic journey verified (Registration -> Profile -> Submit Proposal -> Deliverable v1/v2 -> Payment Acknowledgement -> Review). |
 | **18** | **Remaining Blockers** | None from code or architecture. Operator triggers CloudPanel site creation using provided Vhost files and adds DNS A-records. |
-| **19** | **Actual Target URLs** | Frontend: `https://floxa.flumenx.in` (or `https://work.flumenx.in`) \| Backend API: `https://api-floxa.flumenx.in` \| WebSockets: `wss://api-floxa.flumenx.in/ws`. |
+| **19** | **Actual Target URLs** | Frontend: `https://work.flumenx.in` (or `https://floxawork.flumenx.in`) \| Backend API: `https://api-work.flumenx.in` \| WebSockets: `wss://api-work.flumenx.in/ws`. |
 | **20** | **Git Commit Hashes** | Master branch tracking `origin/master`. Checkpoint updated with audit fixes. |
 | **21** | **GitHub Push Status** | Synchronized with `https://github.com/FlumenCopia/floxa-work.git` on branch `master`. |
 | **22** | **Controlled Beta Readiness** | Code, security, and configurations ready for invited beta participants upon CloudPanel site activation. |
@@ -109,15 +109,15 @@ systemctl restart floxa-backend floxa-frontend
 
 ### Step 4: Configure CloudPanel Sites & SSL (In CloudPanel Web UI)
 1. Navigate to `https://89.116.121.25:8443`
-2. **Add Site 1:** Create Node.js site `floxa.flumenx.in`, assign to user `floxa`.
+2. **Add Site 1:** Create Node.js site `work.flumenx.in`, assign to user `floxa`.
    - Go to **Vhost** tab > Paste contents of `scripts/cloudpanel/nginx_vhost_app.conf` > Save.
    - Go to **SSL/TLS** tab > Issue Let's Encrypt Certificate.
-3. **Add Site 2:** Create Node.js site `api-floxa.flumenx.in`, assign to user `floxa`.
+3. **Add Site 2:** Create Node.js site `api-work.flumenx.in`, assign to user `floxa`.
    - Go to **Vhost** tab > Paste contents of `scripts/cloudpanel/nginx_vhost_api.conf` > Save.
    - Go to **SSL/TLS** tab > Issue Let's Encrypt Certificate.
 
 ### Step 5: Verify Live Endpoints
 ```bash
-curl -I https://api-floxa.flumenx.in/health/live
-curl -I https://floxa.flumenx.in
+curl -I https://api-work.flumenx.in/health/live
+curl -I https://work.flumenx.in
 ```
