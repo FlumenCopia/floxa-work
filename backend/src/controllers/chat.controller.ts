@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { ChatMessage } from '../models/ChatMessage.model.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
+import { isBlockedBetween } from './safety.controller.js';
 
 export async function getMessages(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
@@ -24,6 +25,14 @@ export async function sendMessage(req: AuthenticatedRequest, res: Response): Pro
     if (!text || !text.trim()) {
       res.status(400).json({ error: 'Message text is required' });
       return;
+    }
+
+    if (recipientId && recipientId.toString() !== req.user.id.toString()) {
+      const blocked = await isBlockedBetween(req.user.id, recipientId);
+      if (blocked) {
+        res.status(403).json({ error: 'Communication is blocked between these users' });
+        return;
+      }
     }
 
     const message = await ChatMessage.create({

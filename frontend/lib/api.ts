@@ -1119,3 +1119,319 @@ export async function markAllNotificationsReadApi() {
   });
 }
 
+// -------------------------------------------------------------
+// Phase 11: Trust, Reputation, Reviews & Dispute Workflows
+// -------------------------------------------------------------
+
+export async function submitContractReviewApi(contractId: string, payload: {
+  overallRating: number;
+  communicationRating: number;
+  professionalismRating: number;
+  qualityRating: number;
+  reliabilityRating: number;
+  reviewText: string;
+}) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/contracts/${contractId}/reviews`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to submit review');
+  return data;
+}
+
+export async function fetchContractReviewStatusApi(contractId: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/contracts/${contractId}/reviews/status`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch review status');
+  return data;
+}
+
+export async function fetchUserReviewsApi(userId: string, page = 1, limit = 10) {
+  const res = await fetch(`${API_BASE}/users/${userId}/reviews?page=${page}&limit=${limit}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch reviews');
+  return data;
+}
+
+export async function editReviewApi(reviewId: string, payload: {
+  overallRating?: number;
+  communicationRating?: number;
+  professionalismRating?: number;
+  qualityRating?: number;
+  reliabilityRating?: number;
+  reviewText?: string;
+}) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/reviews/${reviewId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to edit review');
+  return data;
+}
+
+export async function reportReviewApi(reviewId: string, reason: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/reviews/${reviewId}/report`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ reason }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to flag review');
+  return data;
+}
+
+export async function openContractDisputeApi(contractId: string, payload: {
+  category: string;
+  title: string;
+  description: string;
+  desiredOutcome?: string;
+  evidenceFiles?: any[];
+}) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/contracts/${contractId}/disputes`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to open dispute');
+  return data;
+}
+
+export async function fetchContractDisputesApi(contractId: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/contracts/${contractId}/disputes`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch disputes');
+  return data;
+}
+
+export async function fetchDisputeDetailsApi(disputeId: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/disputes/${disputeId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch dispute details');
+  return data;
+}
+
+export async function sendDisputeMessageApi(disputeId: string, text: string, attachments: string[] = [], isInternalModeratorNote = false) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/disputes/${disputeId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ text, attachments, isInternalModeratorNote }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to send dispute message');
+  return data;
+}
+
+export async function uploadDisputeEvidenceApi(disputeId: string, payload: {
+  fileUrl: string;
+  fileName: string;
+  fileSize?: number;
+}) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/disputes/${disputeId}/evidence`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to upload evidence');
+  return data;
+}
+
+export async function resolveDisputeApi(disputeId: string, payload: {
+  resolutionSummary: string;
+  resolutionAction?: string;
+  contractStatusUpdate?: string;
+}) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/admin/disputes/${disputeId}/resolve`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to resolve dispute');
+  return data;
+}
+
+export async function reportItemApi(payload: {
+  targetType: string;
+  targetId: string;
+  targetUserId?: string;
+  reason: string;
+  details?: string;
+  evidenceUrls?: string[];
+}) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/safety/report`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to submit report');
+  return data;
+}
+
+export async function blockUserApi(userId: string, reason?: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/safety/block/${userId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ reason }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to block user');
+  return data;
+}
+
+export async function unblockUserApi(userId: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/safety/block/${userId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to unblock user');
+  return data;
+}
+
+export async function fetchBlockedUsersApi() {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/safety/blocked`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch blocked users');
+  return data.blocks || [];
+}
+
+export async function fetchAdminDisputesApi(status?: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const url = status ? `${API_BASE}/admin/disputes?status=${status}` : `${API_BASE}/admin/disputes`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch admin disputes');
+  return data.disputes || [];
+}
+
+export async function fetchAdminReportsApi(status?: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const url = status ? `${API_BASE}/admin/reports?status=${status}` : `${API_BASE}/admin/reports`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch admin reports');
+  return data.reports || [];
+}
+
+export async function resolveAdminReportApi(reportId: string, status: string, adminNotes?: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/admin/reports/${reportId}/resolve`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ status, adminNotes }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to resolve report');
+  return data;
+}
+
+export async function fetchAdminReviewsApi(status?: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const url = status ? `${API_BASE}/admin/reviews?status=${status}` : `${API_BASE}/admin/reviews`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch admin reviews');
+  return data.reviews || [];
+}
+
+export async function moderateReviewApi(reviewId: string, action: string, moderatorNotes?: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/admin/reviews/${reviewId}/moderate`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ action, moderatorNotes }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to moderate review');
+  return data;
+}
+
+
+

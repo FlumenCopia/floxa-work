@@ -88,6 +88,34 @@ import {
   getAdminUsers,
   toggleUserVerification,
 } from '../controllers/admin.controller.js';
+import {
+  createContractReview,
+  getContractReviewStatus,
+  getUserReviews,
+  editReview,
+  autoPublishReview,
+  reportReview,
+  getAdminReviews,
+  moderateReview,
+} from '../controllers/review.controller.js';
+import {
+  openContractDispute,
+  getDisputeDetails,
+  postDisputeMessage,
+  uploadDisputeEvidence,
+  getContractDisputes,
+  getAdminDisputes,
+  updateDisputeStatus,
+  resolveDispute,
+} from '../controllers/dispute.controller.js';
+import {
+  reportUserOrItem,
+  getAdminReports,
+  resolveAdminReport,
+  blockUser,
+  unblockUser,
+  getBlockedUsers,
+} from '../controllers/safety.controller.js';
 import { requireAuth } from '../middleware/auth.middleware.js';
 import { authRateLimiter } from '../middleware/security.middleware.js';
 
@@ -210,5 +238,37 @@ router.post('/messages', requireAuth, sendMessage);
 router.get('/admin/stats', requireAuth, getAdminPlatformStats);
 router.get('/admin/users', requireAuth, getAdminUsers);
 router.post('/admin/users/:userId/verify', requireAuth, toggleUserVerification);
+
+// Phase 11: Trust, Reputation & Verified Reviews (Double-Blind)
+router.post('/contracts/:contractId/reviews', requireAuth, createContractReview);
+router.post('/reviews', requireAuth, createContractReview);
+router.get('/contracts/:contractId/reviews/status', requireAuth, getContractReviewStatus);
+router.get('/users/:userId/reviews', getUserReviews);
+router.put('/reviews/:reviewId', requireAuth, editReview);
+router.post('/reviews/:reviewId/report', requireAuth, reportReview);
+router.post('/reviews/:reviewId/publish', requireAuth, autoPublishReview);
+router.get('/admin/reviews', requireAuth, getAdminReviews);
+router.post('/admin/reviews/:reviewId/moderate', requireAuth, moderateReview);
+
+// Phase 11: Dispute Resolution & Evidence Mediation (0% Escrow Custody)
+router.post('/contracts/:contractId/disputes', requireAuth, openContractDispute);
+router.post('/disputes', requireAuth, openContractDispute);
+router.get('/contracts/:contractId/disputes', requireAuth, getContractDisputes);
+router.get('/disputes/:disputeId', requireAuth, getDisputeDetails);
+router.post('/disputes/:disputeId/messages', requireAuth, postDisputeMessage);
+router.post('/disputes/:disputeId/evidence', requireAuth, uploadDisputeEvidence);
+router.patch('/disputes/:disputeId/status', requireAuth, updateDisputeStatus);
+router.post('/disputes/:disputeId/status', requireAuth, updateDisputeStatus);
+router.get('/admin/disputes', requireAuth, getAdminDisputes);
+router.post('/admin/disputes/:disputeId/resolve', requireAuth, resolveDispute);
+
+// Phase 11: User Safety, Reporting & User Blocking
+router.post('/safety/report', requireAuth, reportUserOrItem);
+router.get('/admin/reports', requireAuth, getAdminReports);
+router.post('/admin/reports/:reportId/resolve', requireAuth, resolveAdminReport);
+router.post('/safety/block/:userId', requireAuth, blockUser);
+router.post('/safety/block', requireAuth, blockUser);
+router.delete('/safety/block/:userId', requireAuth, unblockUser);
+router.get('/safety/blocked', requireAuth, getBlockedUsers);
 
 export default router;

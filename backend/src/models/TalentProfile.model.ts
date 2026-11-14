@@ -32,6 +32,17 @@ export interface ITalentProfile {
   escrowVolumeEarned: number;
   ratingAverage: number;
   ratingCount: number;
+  communicationScore?: number;
+  qualityScore?: number;
+  reliabilityScore?: number;
+  professionalismScore?: number;
+  ratingBreakdown?: {
+    fiveStar: number;
+    fourStar: number;
+    threeStar: number;
+    twoStar: number;
+    oneStar: number;
+  };
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -81,6 +92,23 @@ const talentProfileSchema = new Schema<ITalentProfile>(
     escrowVolumeEarned: { type: Number, default: 0 },
     ratingAverage: { type: Number, default: 5.0 },
     ratingCount: { type: Number, default: 0 },
+    communicationScore: { type: Number, default: 5.0 },
+    qualityScore: { type: Number, default: 5.0 },
+    reliabilityScore: { type: Number, default: 5.0 },
+    professionalismScore: { type: Number, default: 5.0 },
+    ratingBreakdown: {
+      type: new Schema(
+        {
+          fiveStar: { type: Number, default: 0 },
+          fourStar: { type: Number, default: 0 },
+          threeStar: { type: Number, default: 0 },
+          twoStar: { type: Number, default: 0 },
+          oneStar: { type: Number, default: 0 },
+        },
+        { _id: false }
+      ),
+      default: () => ({ fiveStar: 0, fourStar: 0, threeStar: 0, twoStar: 0, oneStar: 0 }),
+    },
   },
   {
     collection: 'talent_profiles',

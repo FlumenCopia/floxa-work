@@ -32,6 +32,9 @@ import {
   Download,
   FileText,
   CornerDownRight,
+  Scale,
+  Star,
+  AlertOctagon,
 } from 'lucide-react';
 import {
   fetchActiveContract,
@@ -53,10 +56,16 @@ import {
   disputeMilestonePayment,
   uploadFile,
   getAuthUser,
+  submitContractReviewApi,
+  fetchContractReviewStatusApi,
+  openContractDisputeApi,
+  fetchContractDisputesApi,
+  fetchDisputeDetailsApi,
+  sendDisputeMessageApi,
 } from '@/lib/api';
 
 export const WorkspaceView: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'milestones' | 'tasks' | 'discussion' | 'files' | 'activity' | 'closeout'>('milestones');
+  const [activeTab, setActiveTab] = useState<'milestones' | 'tasks' | 'discussion' | 'files' | 'activity' | 'closeout' | 'disputes' | 'reviews'>('milestones');
   const [activeMilestoneNum, setActiveMilestoneNum] = useState(1);
   const [workspaceData, setWorkspaceData] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -110,6 +119,31 @@ export const WorkspaceView: React.FC = () => {
   const [closeoutNotes, setCloseoutNotes] = useState('');
   const [isConfirmingCloseout, setIsConfirmingCloseout] = useState(false);
 
+  // Reviews State
+  const [reviewStatus, setReviewStatus] = useState<any | null>(null);
+  const [reviewForm, setReviewForm] = useState({
+    overallRating: 5,
+    communicationRating: 5,
+    professionalismRating: 5,
+    qualityRating: 5,
+    reliabilityRating: 5,
+    reviewText: '',
+  });
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  // Disputes State
+  const [contractDisputes, setContractDisputes] = useState<any[]>([]);
+  const [activeDisputeDetails, setActiveDisputeDetails] = useState<any | null>(null);
+  const [disputeMessages, setDisputeMessages] = useState<any[]>([]);
+  const [newDisputeMsg, setNewDisputeMsg] = useState('');
+  const [isOpeningDispute, setIsOpeningDispute] = useState(false);
+  const [disputeForm, setDisputeForm] = useState({
+    category: 'deliverable_quality',
+    title: '',
+    description: '',
+    desiredOutcome: '',
+  });
+
   const currentUser = getAuthUser();
   const isClient = currentUser?.role === 'client';
 
@@ -156,6 +190,14 @@ export const WorkspaceView: React.FC = () => {
     } else if (activeTab === 'activity') {
       fetchContractActivityApi(contractId)
         .then((a) => setActivities(a.activities || []))
+        .catch(() => {});
+    } else if (activeTab === 'reviews') {
+      fetchContractReviewStatusApi(contractId)
+        .then((r) => setReviewStatus(r))
+        .catch(() => {});
+    } else if (activeTab === 'disputes') {
+      fetchContractDisputesApi(contractId)
+        .then((d) => setContractDisputes(d.disputes || []))
         .catch(() => {});
     }
   }, [activeTab, taskFilterStatus, workspaceData?.contract?._id]);
@@ -414,6 +456,67 @@ export const WorkspaceView: React.FC = () => {
     }
   };
 
+  // 12. Phase 11 Reviews & Disputes Handlers
+  const handleSubmitReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contract?._id) return;
+    setIsSubmittingReview(true);
+    setActionMessage(null);
+    try {
+      const res = await submitContractReviewApi(contract._id, reviewForm);
+      setActionMessage({ type: 'success', text: res.message || 'Review submitted successfully!' });
+      const status = await fetchContractReviewStatusApi(contract._id);
+      setReviewStatus(status);
+    } catch (err: any) {
+      setActionMessage({ type: 'error', text: err.message || 'Failed to submit review' });
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
+  const handleOpenDispute = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contract?._id) return;
+    setIsOpeningDispute(true);
+    setActionMessage(null);
+    try {
+      await openContractDisputeApi(contract._id, disputeForm);
+      setActionMessage({ type: 'success', text: 'Dispute opened. Platform mediation initiated.' });
+      setDisputeForm({ category: 'deliverable_quality', title: '', description: '', desiredOutcome: '' });
+      const d = await fetchContractDisputesApi(contract._id);
+      setContractDisputes(d.disputes || []);
+    } catch (err: any) {
+      setActionMessage({ type: 'error', text: err.message || 'Failed to open dispute' });
+    } finally {
+      setIsOpeningDispute(false);
+    }
+  };
+
+  const handleLoadDisputeDetails = async (disputeId: string) => {
+    try {
+      const res = await fetchDisputeDetailsApi(disputeId);
+      setActiveDisputeDetails(res.dispute);
+      setDisputeMessages(res.messages || []);
+    } catch (err: any) {
+      setActionMessage({ type: 'error', text: err.message || 'Failed to load dispute' });
+    }
+  };
+
+  const handleSendDisputeMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeDisputeDetails?._id && !activeDisputeDetails?.id) return;
+    const dispId = activeDisputeDetails._id || activeDisputeDetails.id;
+    if (!newDisputeMsg.trim()) return;
+    try {
+      await sendDisputeMessageApi(dispId, newDisputeMsg.trim());
+      setNewDisputeMsg('');
+      const res = await fetchDisputeDetailsApi(dispId);
+      setDisputeMessages(res.messages || []);
+    } catch (err: any) {
+      setActionMessage({ type: 'error', text: err.message || 'Failed to send message' });
+    }
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in pb-12">
       {/* 1. PROJECT WORKSPACE HEADER CARD */}
@@ -582,6 +685,38 @@ export const WorkspaceView: React.FC = () => {
           <span>Project Handover</span>
           {closeoutChecklist?.isCloseoutReady && !closeoutChecklist?.isFullyClosed && (
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('reviews')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+            activeTab === 'reviews'
+              ? 'bg-[#0084ff] text-white shadow-md shadow-[#0084ff]/25'
+              : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+          }`}
+        >
+          <Star size={14} />
+          <span>Verified Review</span>
+          {contract.status === 'completed' && (
+            <span className="w-2 h-2 rounded-full bg-amber-400" />
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('disputes')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+            activeTab === 'disputes'
+              ? 'bg-red-600 text-white shadow-md shadow-red-600/25'
+              : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+          }`}
+        >
+          <Scale size={14} />
+          <span>Disputes & Mediation</span>
+          {contract.status === 'disputed' && (
+            <span className="px-1.5 py-0.5 rounded-full text-[9px] bg-red-100 text-red-700 font-bold">
+              ACTIVE
+            </span>
           )}
         </button>
       </div>
@@ -1267,6 +1402,375 @@ export const WorkspaceView: React.FC = () => {
                 </span>
               </button>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================
+          TAB 7: VERIFIED REVIEWS & DOUBLE-BLIND REPUTATION (PHASE 11)
+          ======================================================== */}
+      {activeTab === 'reviews' && (
+        <div className="floxa-card p-6 space-y-6 animate-in fade-in">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+            <div>
+              <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <Star size={16} className="text-amber-500" fill="#f59e0b" />
+                <span>Verified Contract Reviews & Feedback</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Cryptographically anchored reviews with double-blind publication to eliminate retaliatory ratings.
+              </p>
+            </div>
+            {reviewStatus?.isMutualPublished && (
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                Mutual Reviews Published ✓
+              </span>
+            )}
+          </div>
+
+          {contract.status !== 'completed' ? (
+            <div className="p-8 rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-center space-y-3">
+              <ShieldCheck size={36} className="mx-auto text-slate-400" />
+              <h4 className="text-sm font-bold text-slate-800">Review Window Unlocks Upon Completion</h4>
+              <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                To guarantee genuine proof-of-work integrity, reviews can only be submitted after both client and freelancer confirm final project closeout. Current status: <strong className="uppercase">{contract.status}</strong>.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Double-Blind Status Banner */}
+              <div className="p-4 rounded-xl bg-blue-50/80 border border-blue-200 text-xs text-blue-900 space-y-1">
+                <div className="font-bold flex items-center gap-1.5">
+                  <ShieldCheck size={14} className="text-[#0084ff]" />
+                  <span>Double-Blind Anti-Retaliation Policy</span>
+                </div>
+                <p className="leading-relaxed">
+                  Neither participant can read the other’s review until both have submitted theirs, or the submission window concludes. This guarantees authentic, unbiased professional feedback.
+                </p>
+              </div>
+
+              {/* Review Submission Form */}
+              {!reviewStatus?.myReviewSubmitted ? (
+                <form onSubmit={handleSubmitReview} className="space-y-4 p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
+                  <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider">
+                    Submit Your Verified Evaluation
+                  </h4>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Overall Rating</label>
+                      <select
+                        value={reviewForm.overallRating}
+                        onChange={(e) => setReviewForm({ ...reviewForm, overallRating: Number(e.target.value) })}
+                        className="w-full p-2 rounded-lg border border-slate-200 text-xs font-semibold"
+                      >
+                        <option value={5}>5 - Exceptional</option>
+                        <option value={4}>4 - Very Good</option>
+                        <option value={3}>3 - Satisfactory</option>
+                        <option value={2}>2 - Needs Improvement</option>
+                        <option value={1}>1 - Unsatisfactory</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Communication</label>
+                      <select
+                        value={reviewForm.communicationRating}
+                        onChange={(e) => setReviewForm({ ...reviewForm, communicationRating: Number(e.target.value) })}
+                        className="w-full p-2 rounded-lg border border-slate-200 text-xs font-semibold"
+                      >
+                        <option value={5}>5 / 5</option>
+                        <option value={4}>4 / 5</option>
+                        <option value={3}>3 / 5</option>
+                        <option value={2}>2 / 5</option>
+                        <option value={1}>1 / 5</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Quality</label>
+                      <select
+                        value={reviewForm.qualityRating}
+                        onChange={(e) => setReviewForm({ ...reviewForm, qualityRating: Number(e.target.value) })}
+                        className="w-full p-2 rounded-lg border border-slate-200 text-xs font-semibold"
+                      >
+                        <option value={5}>5 / 5</option>
+                        <option value={4}>4 / 5</option>
+                        <option value={3}>3 / 5</option>
+                        <option value={2}>2 / 5</option>
+                        <option value={1}>1 / 5</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Reliability</label>
+                      <select
+                        value={reviewForm.reliabilityRating}
+                        onChange={(e) => setReviewForm({ ...reviewForm, reliabilityRating: Number(e.target.value) })}
+                        className="w-full p-2 rounded-lg border border-slate-200 text-xs font-semibold"
+                      >
+                        <option value={5}>5 / 5</option>
+                        <option value={4}>4 / 5</option>
+                        <option value={3}>3 / 5</option>
+                        <option value={2}>2 / 5</option>
+                        <option value={1}>1 / 5</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Professionalism</label>
+                      <select
+                        value={reviewForm.professionalismRating}
+                        onChange={(e) => setReviewForm({ ...reviewForm, professionalismRating: Number(e.target.value) })}
+                        className="w-full p-2 rounded-lg border border-slate-200 text-xs font-semibold"
+                      >
+                        <option value={5}>5 / 5</option>
+                        <option value={4}>4 / 5</option>
+                        <option value={3}>3 / 5</option>
+                        <option value={2}>2 / 5</option>
+                        <option value={1}>1 / 5</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      Professional Evaluation Statement (Min 10 characters)
+                    </label>
+                    <textarea
+                      rows={4}
+                      value={reviewForm.reviewText}
+                      onChange={(e) => setReviewForm({ ...reviewForm, reviewText: e.target.value })}
+                      placeholder="Detail your collaboration experience, delivery quality, timeliness, and communication..."
+                      className="w-full p-3 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-[#0084ff]/20"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isSubmittingReview || reviewForm.reviewText.trim().length < 10}
+                    className="btn-cyan-pill text-xs px-6 py-2.5 font-bold"
+                  >
+                    <Star size={14} />
+                    <span>Submit Verified Review</span>
+                  </button>
+                </form>
+              ) : (
+                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 space-y-2">
+                  <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
+                    <CheckCircle2 size={16} />
+                    <span>You have submitted your verified review for this contract.</span>
+                  </div>
+                  {!reviewStatus?.counterpartReviewSubmitted && (
+                    <p className="text-xs text-emerald-700">
+                      Your counterpart has not yet submitted theirs. Review contents will remain double-blind until they do.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Published Mutual Reviews Display */}
+              {reviewStatus?.isMutualPublished && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                  {reviewStatus.myReview && (
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-2">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                        <span>Your Submitted Review</span>
+                        <div className="flex items-center gap-1 text-amber-500">
+                          <Star size={13} fill="#f59e0b" />
+                          <span>{reviewStatus.myReview.overallRating} / 5</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100 italic">
+                        &ldquo;{reviewStatus.myReview.reviewText}&rdquo;
+                      </p>
+                    </div>
+                  )}
+
+                  {reviewStatus.counterpartReview && (
+                    <div className="p-4 rounded-2xl bg-white border border-slate-200 space-y-2">
+                      <div className="flex items-center justify-between text-xs font-bold text-slate-800">
+                        <span>Counterpart Review for You</span>
+                        <div className="flex items-center gap-1 text-amber-500">
+                          <Star size={13} fill="#f59e0b" />
+                          <span>{reviewStatus.counterpartReview.overallRating} / 5</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100 italic">
+                        &ldquo;{reviewStatus.counterpartReview.reviewText}&rdquo;
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================
+          TAB 8: DISPUTE RESOLUTION & EVIDENCE MEDIATION (PHASE 11)
+          ======================================================== */}
+      {activeTab === 'disputes' && (
+        <div className="floxa-card p-6 space-y-6 animate-in fade-in">
+          <div className="flex items-center justify-between pb-4 border-b border-slate-200">
+            <div>
+              <h3 className="text-sm font-black text-slate-900 flex items-center gap-2">
+                <Scale size={16} className="text-red-600" />
+                <span>Project Dispute Resolution & Mediation Thread</span>
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Structured evidence review and platform mediation for project disagreements.
+              </p>
+            </div>
+            {contract.status === 'disputed' && (
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800 border border-red-300">
+                Dispute Active
+              </span>
+            )}
+          </div>
+
+          {/* Non-Custodial Legal Notice */}
+          <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-1">
+            <div className="font-bold flex items-center gap-1.5">
+              <AlertOctagon size={14} className="text-amber-600" />
+              <span>Non-Custodial Direct Settlement Disclosure</span>
+            </div>
+            <p className="leading-relaxed">
+              FLOXA Work is a direct settlement coordinator and does not hold user funds in escrow. Dispute resolution provides platform mediation, factual review, and conduct evaluation.
+            </p>
+          </div>
+
+          {/* Active Dispute Thread or Dispute Creator */}
+          {activeDisputeDetails ? (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">{activeDisputeDetails.title}</h4>
+                  <div className="text-[11px] text-slate-500">Category: <span className="font-mono font-semibold uppercase">{activeDisputeDetails.category}</span></div>
+                </div>
+                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-800 uppercase">
+                  Status: {activeDisputeDetails.status}
+                </span>
+              </div>
+
+              {/* Dispute Message Thread */}
+              <div className="space-y-3 max-h-96 overflow-y-auto p-4 rounded-xl bg-slate-50/50 border border-slate-200">
+                {disputeMessages.length === 0 ? (
+                  <div className="text-center py-6 text-xs text-slate-400">No messages in dispute thread yet.</div>
+                ) : (
+                  disputeMessages.map((msg: any) => (
+                    <div key={msg._id || msg.id} className="p-3 rounded-xl bg-white border border-slate-200 shadow-xs space-y-1">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-bold text-slate-800">{msg.senderId?.name || 'Participant'}</span>
+                        <span className="text-slate-400 font-mono">{new Date(msg.createdAt).toLocaleTimeString()}</span>
+                      </div>
+                      <p className="text-xs text-slate-700 leading-relaxed">{msg.text}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Post Dispute Message */}
+              <form onSubmit={handleSendDisputeMessage} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Post response or additional context to the dispute thread..."
+                  value={newDisputeMsg}
+                  onChange={(e) => setNewDisputeMsg(e.target.value)}
+                  className="flex-1 p-2.5 rounded-xl border border-slate-200 text-xs"
+                />
+                <button type="submit" className="btn-cyan-pill text-xs px-5 py-2 font-bold">
+                  Send
+                </button>
+              </form>
+            </div>
+          ) : contractDisputes.length > 0 ? (
+            <div className="space-y-3">
+              <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider">Active Contract Disputes</h4>
+              {contractDisputes.map((disp: any) => (
+                <div key={disp._id || disp.id} className="p-4 rounded-xl bg-white border border-slate-200 flex items-center justify-between">
+                  <div>
+                    <h5 className="text-sm font-bold text-slate-900">{disp.title}</h5>
+                    <div className="text-xs text-slate-500 font-mono">Status: {disp.status} | Category: {disp.category}</div>
+                  </div>
+                  <button
+                    onClick={() => handleLoadDisputeDetails(disp._id || disp.id)}
+                    className="btn-cyan-pill text-xs px-4 py-1.5 font-bold"
+                  >
+                    Open Thread
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <form onSubmit={handleOpenDispute} className="space-y-4 p-5 rounded-2xl bg-white border border-slate-200">
+              <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider">
+                Initiate Project Mediation & Dispute
+              </h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Dispute Category</label>
+                  <select
+                    value={disputeForm.category}
+                    onChange={(e) => setDisputeForm({ ...disputeForm, category: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs"
+                  >
+                    <option value="deliverable_quality">Deliverable Quality Disagreement</option>
+                    <option value="scope_disagreement">Scope of Work Disagreement</option>
+                    <option value="missed_deadlines">Missed Deadlines & Delays</option>
+                    <option value="communication_conduct">Communication / Unprofessional Conduct</option>
+                    <option value="payment_disagreement">External Payment Reconciliation Issue</option>
+                    <option value="commitment_breach">Breach of Commitments</option>
+                    <option value="other">Other Issue</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-700 mb-1">Dispute Title</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Incomplete revision deliverables on Milestone 2"
+                    value={disputeForm.title}
+                    onChange={(e) => setDisputeForm({ ...disputeForm, title: e.target.value })}
+                    className="w-full p-2.5 rounded-xl border border-slate-200 text-xs"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Detailed Description of Disagreement</label>
+                <textarea
+                  rows={4}
+                  placeholder="Clearly explain the facts, timeline, missed milestones, or quality issues..."
+                  value={disputeForm.description}
+                  onChange={(e) => setDisputeForm({ ...disputeForm, description: e.target.value })}
+                  className="w-full p-3 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-red-500/20"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">Desired Outcome</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Deliverable revision without additional charges or mutual agreement cancellation"
+                  value={disputeForm.desiredOutcome}
+                  onChange={(e) => setDisputeForm({ ...disputeForm, desiredOutcome: e.target.value })}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isOpeningDispute || !disputeForm.title || !disputeForm.description}
+                className="px-6 py-2.5 rounded-full text-xs font-bold bg-red-600 hover:bg-red-700 text-white transition-colors"
+              >
+                Submit Dispute for Platform Mediation
+              </button>
+            </form>
           )}
         </div>
       )}

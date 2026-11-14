@@ -6,6 +6,7 @@ import { User } from '../models/User.model.js';
 import { AuditLog } from '../models/AuditLog.model.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { broadcastSystemNotification } from '../websocket/socketServer.js';
+import { isBlockedBetween } from './safety.controller.js';
 
 export async function sendInvitation(req: AuthenticatedRequest, res: Response): Promise<void> {
   try {
@@ -41,6 +42,13 @@ export async function sendInvitation(req: AuthenticatedRequest, res: Response): 
     const freelancer = await User.findById(freelancerId);
     if (!freelancer) {
       res.status(404).json({ error: 'Target freelancer not found' });
+      return;
+    }
+
+    // Check if either party blocked the other
+    const blocked = await isBlockedBetween(req.user.id, freelancerId);
+    if (blocked) {
+      res.status(403).json({ error: 'Cannot send invitation: Communication is blocked between these users' });
       return;
     }
 

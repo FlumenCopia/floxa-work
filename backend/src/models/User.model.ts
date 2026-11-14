@@ -19,6 +19,9 @@ export interface IUser {
   passwordResetExpires?: Date;
   floxaDesignLinked: boolean;
   floxaDesignUserId?: string;
+  clientRatingAverage?: number;
+  clientRatingCount?: number;
+  clientCompletedProjectsCount?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -39,6 +42,9 @@ const userSchema = new Schema<IUser>(
     passwordResetExpires: { type: Date, default: null, select: false },
     floxaDesignLinked: { type: Boolean, default: false },
     floxaDesignUserId: { type: String, default: '' },
+    clientRatingAverage: { type: Number, default: 5.0 },
+    clientRatingCount: { type: Number, default: 0 },
+    clientCompletedProjectsCount: { type: Number, default: 0 },
   },
   {
     collection: 'users',

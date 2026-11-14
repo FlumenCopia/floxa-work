@@ -15,4 +15,9 @@ export * from './Invitation.model.js';
 export * from './Task.model.js';
 export * from './ContractActivity.model.js';
 export * from './Notification.model.js';
+export * from './Review.model.js';
+export * from './Dispute.model.js';
+export * from './DisputeMessage.model.js';
+export * from './UserReport.model.js';
+export * from './UserBlock.model.js';
 

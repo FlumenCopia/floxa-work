@@ -13,8 +13,11 @@ import {
   X,
   Sparkles,
   Paperclip,
+  ShieldCheck,
+  Award,
+  AlertTriangle,
 } from 'lucide-react';
-import { fetchUserProfile, updateUserProfile, uploadFile } from '@/lib/api';
+import { fetchUserProfile, updateUserProfile, uploadFile, fetchUserReviewsApi, reportReviewApi } from '@/lib/api';
 import { AuthUser } from './auth/AuthScreen';
 
 interface ProfileViewProps {
@@ -29,6 +32,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onLogout,
 }) => {
   const [profileData, setProfileData] = useState<any | null>(null);
+  const [reviewsData, setReviewsData] = useState<{ reviews: any[]; reputationSummary: any } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -80,6 +84,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           availabilityStatus: data.profile?.availabilityStatus || 'available',
         });
       }
+      try {
+        const rev = await fetchUserReviewsApi(currentUser.id);
+        if (rev) setReviewsData(rev);
+      } catch {}
     } catch {
       // Fallback
     } finally {
@@ -272,6 +280,85 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               Client Rating
             </div>
           </div>
+        </div>
+
+        {/* Phase 11: Trust, Reputation & Verified Reviews Section */}
+        <div className="pt-4 border-t border-slate-100 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={18} className="text-[#0084ff]" />
+              <h3 className="text-sm font-bold text-slate-900">Verified Client Reviews & Reputation</h3>
+            </div>
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-semibold">
+              <Award size={13} />
+              <span>Contract-Verified Only</span>
+            </div>
+          </div>
+
+          {reviewsData && reviewsData.reputationSummary && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 bg-slate-50/70 rounded-xl border border-slate-200/80">
+              <div className="text-center p-2 rounded-lg bg-white border border-slate-200/60 shadow-xs">
+                <div className="text-xs text-slate-500 font-medium">Communication</div>
+                <div className="text-base font-bold text-slate-800 mt-0.5">
+                  {reviewsData.reputationSummary.communicationScore || '5.0'} / 5.0
+                </div>
+              </div>
+              <div className="text-center p-2 rounded-lg bg-white border border-slate-200/60 shadow-xs">
+                <div className="text-xs text-slate-500 font-medium">Quality of Work</div>
+                <div className="text-base font-bold text-slate-800 mt-0.5">
+                  {reviewsData.reputationSummary.qualityScore || '5.0'} / 5.0
+                </div>
+              </div>
+              <div className="text-center p-2 rounded-lg bg-white border border-slate-200/60 shadow-xs">
+                <div className="text-xs text-slate-500 font-medium">Reliability</div>
+                <div className="text-base font-bold text-slate-800 mt-0.5">
+                  {reviewsData.reputationSummary.reliabilityScore || '5.0'} / 5.0
+                </div>
+              </div>
+              <div className="text-center p-2 rounded-lg bg-white border border-slate-200/60 shadow-xs">
+                <div className="text-xs text-slate-500 font-medium">Professionalism</div>
+                <div className="text-base font-bold text-slate-800 mt-0.5">
+                  {reviewsData.reputationSummary.professionalismScore || '5.0'} / 5.0
+                </div>
+              </div>
+            </div>
+          )}
+
+          {reviewsData && reviewsData.reviews && reviewsData.reviews.length > 0 ? (
+            <div className="space-y-3">
+              {reviewsData.reviews.map((rev: any) => (
+                <div key={rev._id || rev.id} className="p-3.5 rounded-xl bg-white border border-slate-200/90 shadow-xs space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center font-bold text-xs text-slate-700">
+                        {rev.reviewerId?.name?.[0]?.toUpperCase() || 'U'}
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-slate-900">{rev.reviewerId?.name || 'Verified Client'}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">@{rev.reviewerId?.handle || 'member'}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200 text-amber-700 text-xs font-bold">
+                      <Star size={12} fill="#f59e0b" className="text-amber-500" />
+                      <span>{rev.overallRating}</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-700 leading-relaxed bg-slate-50/50 p-2.5 rounded-lg border border-slate-100">
+                    &ldquo;{rev.reviewText}&rdquo;
+                  </p>
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1">
+                    <span>Verified Contract Review</span>
+                    <span>{new Date(rev.createdAt || Date.now()).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 px-4 bg-slate-50/50 rounded-xl border border-dashed border-slate-200 text-slate-500 text-xs">
+              <ShieldCheck size={24} className="mx-auto mb-1 text-slate-300" />
+              <span>No published reviews yet. Completed projects unlock mutual double-blind reviews.</span>
+            </div>
+          )}
         </div>
 
         {/* Sign Out Button */}
