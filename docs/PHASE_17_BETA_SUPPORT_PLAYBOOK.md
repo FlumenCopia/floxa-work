@@ -45,3 +45,4 @@ For early beta users, support is delivered via three structured in-app touchpoin
 1. **Token Invalidation:** In the event of reported account compromise, operator executes session revocation in the database, purging all active refresh token families.
 2. **Audit Inspection:** Review immutable administrative audit logs (`GET /api/admin/audit-logs`) to identify affected endpoints, timestamps, and IP addresses.
 3. **Notification:** Notify affected user via verified email and prompt secure password reset.
+

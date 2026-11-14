@@ -45,3 +45,4 @@ The following manual prerequisites must be completed by human platform operators
    - Add `RESEND_API_KEY` or `SMTP_*` credentials to backend environment variables.
 4. **Qualified Legal Review:**
    - Submit policy drafts in `docs/PHASE_17_POLICY_DRAFTS.md` to qualified legal counsel for jurisdiction-specific review before public signoff.
+

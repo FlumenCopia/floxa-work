@@ -57,3 +57,4 @@
 1. **Professional Conduct:** Users must maintain professional, respectful communication in project discussions and chat channels. Harassment, discrimination, and abusive behavior will not be tolerated.
 2. **Anti-Circumvention Integrity:** Utilizing the platform to solicit off-platform discovery spam or abusing platform features to harvest freelancer identities is strictly forbidden.
 3. **Truth in Diagnosis:** Freelancers must provide genuine, strategic problem diagnoses in Mini-Discovery pitches and must not use automated scraping or deceptive portfolio representations.
+

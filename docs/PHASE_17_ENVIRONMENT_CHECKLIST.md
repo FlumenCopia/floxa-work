@@ -59,3 +59,4 @@ openssl rand -hex 32
 # Generate JWT Refresh Secret
 openssl rand -hex 32
 ```
+

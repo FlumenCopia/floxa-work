@@ -65,3 +65,4 @@ Per Phase 17 architectural requirements, verification tiers are explicitly separ
 - **Admin Access Controls & Safety:** Verified role-based access control (RBAC), audit logging, and formula injection defenses.
 - **Private File Protection:** Verified path traversal defense and download authorization barriers.
 - **Payment Integrity Invariant:** Verified permanent 0% escrow custody: `/users/me/wallet` and `/escrow/balance` return 404.
+

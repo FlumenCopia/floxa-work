@@ -76,3 +76,4 @@
 ### 4.3 Database Backup Strategy
 1. **Automated Cloud Provider Snapshots:** MongoDB Atlas daily point-in-time snapshots.
 2. **Deterministic Script Backups:** Run `node backend/scripts/backup-database.cjs` via scheduled cron or GitHub Action. Output archives are compressed and validated with SHA-256 checksums.
+

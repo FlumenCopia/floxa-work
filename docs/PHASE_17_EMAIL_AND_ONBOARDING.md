@@ -49,3 +49,4 @@
 ### 2.5 Clean Logout (`POST /api/auth/logout`)
 - Invalidates the active refresh token in the database.
 - Clears client session memory and browser storage.
+

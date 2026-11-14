@@ -47,3 +47,4 @@ In all administrative views, exports, and executive summaries:
 - Contract values are labeled as **"Total Contractual Value (External Direct Settlement)"**.
 - Platform revenue is reported strictly as direct platform fees (if any), with an explicit notice:
   *"FLOXA Work operates on a 0% escrow custody model. Gross contractual value reflects work coordinated between independent parties and does not represent company revenue or platform cash balances."*
+
