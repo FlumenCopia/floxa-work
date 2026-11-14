@@ -13,9 +13,11 @@ export interface IBrief {
   clientId: Types.ObjectId | string;
   title: string;
   category: 'branding' | 'uiux' | 'webdev' | 'mobile' | 'marketing' | 'consulting';
+  industry?: string;
   problemStatement: string;
   targetAudience: string;
   deliverablesRequired: string[];
+  requiredSkills?: string[];
   sliders: IBriefSlider[];
   budgetMin: number;
   budgetMax: number;
@@ -48,9 +50,11 @@ const briefSchema = new Schema<IBrief>(
       required: true,
       index: true,
     },
+    industry: { type: String, default: '', index: true },
     problemStatement: { type: String, required: true, trim: true },
     targetAudience: { type: String, default: '', trim: true },
     deliverablesRequired: { type: [String], default: [] },
+    requiredSkills: { type: [String], default: [], index: true },
     sliders: { type: [briefSliderSchema], default: [] },
     budgetMin: { type: Number, required: true },
     budgetMax: { type: Number, required: true },
@@ -71,6 +75,14 @@ const briefSchema = new Schema<IBrief>(
   }
 );
 
+briefSchema.index({
+  title: 'text',
+  problemStatement: 'text',
+  requiredSkills: 'text',
+  deliverablesRequired: 'text',
+  industry: 'text',
+});
+
 briefSchema.set('toJSON', {
   virtuals: true,
   transform: (_doc, ret: Record<string, any>) => {
@@ -81,4 +93,3 @@ briefSchema.set('toJSON', {
 });
 
 export const Brief: Model<IBrief> = mongoose.models.Brief || mongoose.model<IBrief>('Brief', briefSchema);
-

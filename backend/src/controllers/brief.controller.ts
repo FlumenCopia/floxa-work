@@ -13,6 +13,7 @@ export async function createBrief(req: AuthenticatedRequest, res: Response): Pro
       title,
       category,
       problemStatement,
+      description,
       targetAudience,
       deliverablesRequired,
       sliders,
@@ -20,9 +21,13 @@ export async function createBrief(req: AuthenticatedRequest, res: Response): Pro
       budgetMax,
       currency,
       deadlineWeeks,
+      requiredSkills,
+      industry,
     } = req.body;
 
-    if (!title || !category || !problemStatement || !budgetMin || !budgetMax) {
+    const finalProblemStatement = problemStatement || description;
+
+    if (!title || !category || !finalProblemStatement || !budgetMin || !budgetMax) {
       res.status(400).json({ error: 'Missing required brief fields.' });
       return;
     }
@@ -33,9 +38,11 @@ export async function createBrief(req: AuthenticatedRequest, res: Response): Pro
       clientId: req.user.id,
       title,
       category,
-      problemStatement,
+      problemStatement: finalProblemStatement,
       targetAudience: targetAudience || '',
       deliverablesRequired: deliverablesRequired || [],
+      requiredSkills: requiredSkills || [],
+      industry: industry || '',
       sliders: sliders || [
         { key: 'speed_vs_craft', leftLabel: 'Speed / Launch Fast', rightLabel: 'High Craft / Pixel-Perfect', value: 50 },
         { key: 'risk_vs_safe', leftLabel: 'Proven / Industry Standard', rightLabel: 'Bold / Disruptive', value: 50 },

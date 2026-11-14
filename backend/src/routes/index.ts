@@ -26,6 +26,28 @@ import {
   getMyProposals,
 } from '../controllers/proposal.controller.js';
 import {
+  searchFreelancers,
+  getFreelancerDiscoveryDetails,
+  searchProjects,
+  getProjectDiscoveryDetails,
+  calculateBriefTalentMatch,
+} from '../controllers/discovery.controller.js';
+import {
+  saveFreelancer,
+  removeSavedFreelancer,
+  getSavedFreelancers,
+  saveProject,
+  removeSavedProject,
+  getSavedProjects,
+} from '../controllers/saved.controller.js';
+import {
+  sendInvitation,
+  getInvitations,
+  acceptInvitation,
+  declineInvitation,
+  cancelInvitation,
+} from '../controllers/invitation.controller.js';
+import {
   acceptProposalAndCreateContract,
   submitMilestoneDeliverable,
   approveMilestoneDeliverable,
@@ -76,6 +98,8 @@ router.get('/auth/me', requireAuth, getMe);
 // User Profile & Talent Profile Management
 router.get('/users/profile', requireAuth, getUserProfile);
 router.put('/users/profile', requireAuth, updateUserProfile);
+router.get('/profile', requireAuth, getUserProfile);
+router.put('/profile', requireAuth, updateUserProfile);
 
 // Social Proof-of-Work Feed & Talent
 router.get('/feed', getSocialFeed);
@@ -97,6 +121,31 @@ router.post('/proposals/:id/shortlist', requireAuth, shortlistProposal);
 router.post('/proposals/:id/decline', requireAuth, declineProposal);
 router.post('/proposals/:id/withdraw', requireAuth, withdrawProposal);
 router.get('/briefs/:briefId/proposals', requireAuth, getBriefProposals);
+
+// Phase 9: Advanced Discovery & Search Engine
+router.get('/discovery/freelancers', searchFreelancers);
+router.get('/discovery/freelancers/:id', getFreelancerDiscoveryDetails);
+router.get('/discovery/projects', searchProjects);
+router.get('/discovery/projects/:id', getProjectDiscoveryDetails);
+router.get('/discovery/match', calculateBriefTalentMatch);
+
+// Phase 9: Saved Items (Freelancers & Projects)
+router.post('/saved/freelancers/:id', requireAuth, saveFreelancer);
+router.delete('/saved/freelancers/:id', requireAuth, removeSavedFreelancer);
+router.get('/saved/freelancers', requireAuth, getSavedFreelancers);
+router.post('/saved/projects/:id', requireAuth, saveProject);
+router.delete('/saved/projects/:id', requireAuth, removeSavedProject);
+router.get('/saved/projects', requireAuth, getSavedProjects);
+
+// Phase 9: Project Invitations Workflow
+router.post('/invitations', requireAuth, sendInvitation);
+router.get('/invitations', requireAuth, getInvitations);
+router.post('/invitations/:id/accept', requireAuth, acceptInvitation);
+router.put('/invitations/:id/accept', requireAuth, acceptInvitation);
+router.post('/invitations/:id/decline', requireAuth, declineInvitation);
+router.put('/invitations/:id/decline', requireAuth, declineInvitation);
+router.post('/invitations/:id/cancel', requireAuth, cancelInvitation);
+router.put('/invitations/:id/cancel', requireAuth, cancelInvitation);
 
 // Contracts & Direct Milestone Billing (0% Platform Custody)
 router.post('/contracts', requireAuth, acceptProposalAndCreateContract);

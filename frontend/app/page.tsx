@@ -13,6 +13,7 @@ import { PostBriefModal } from '@/components/PostBriefModal';
 import { ProfileView } from '@/components/ProfileView';
 import { PaymentLedgerView } from '@/components/PaymentLedgerView';
 import { AdminPortal } from '@/components/AdminPortal';
+import { DiscoveryView } from '@/components/DiscoveryView';
 import {
   MessageSquare,
   ArrowRight,
@@ -759,6 +760,17 @@ export default function HomePage() {
               tab: 'workspace',
             });
             setRefreshKey((k) => k + 1);
+          }}
+        />
+      )}
+
+      {/* VIEW: ADVANCED DISCOVERY & INTELLIGENT MATCHING */}
+      {currentTab === 'discovery' && (
+        <DiscoveryView
+          onOpenPitchModal={(brief) => setSelectedBriefForPitch(brief)}
+          onOpenCall={() => {
+            setCurrentTab('chat');
+            handleStartCall('video');
           }}
         />
       )}

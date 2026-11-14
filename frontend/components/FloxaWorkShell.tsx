@@ -18,6 +18,7 @@ import {
   ChevronDown,
   ArrowRight,
   ShieldAlert,
+  Sparkles,
 } from 'lucide-react';
 import { AuthUser } from './auth/AuthScreen';
 
@@ -30,6 +31,7 @@ export type FloxaWorkTab =
   | 'escrow'
   | 'profile'
   | 'client_dashboard'
+  | 'discovery'
   | 'admin';
 
 export interface FloxaNotification {
@@ -154,6 +156,14 @@ export const FloxaWorkShell: React.FC<FloxaWorkShellProps> = ({
               </button>
 
               <button
+                onClick={() => handleNavClick('discovery')}
+                className={`nav-item ${currentTab === 'discovery' ? 'active' : ''}`}
+              >
+                <Sparkles size={15} className="nav-icon text-[#0084ff]" />
+                <span>Discover Talent</span>
+              </button>
+
+              <button
                 onClick={() => handleNavClick('briefs')}
                 className={`nav-item ${currentTab === 'briefs' ? 'active' : ''}`}
               >
@@ -177,6 +187,14 @@ export const FloxaWorkShell: React.FC<FloxaWorkShellProps> = ({
             </>
           ) : (
             <>
+              <button
+                onClick={() => handleNavClick('discovery')}
+                className={`nav-item ${currentTab === 'discovery' ? 'active' : ''}`}
+              >
+                <Sparkles size={15} className="nav-icon text-[#0084ff]" />
+                <span>Match & Discover</span>
+              </button>
+
               <button
                 onClick={() => handleNavClick('briefs')}
                 className={`nav-item ${currentTab === 'briefs' ? 'active' : ''}`}

@@ -10,4 +10,6 @@ export * from './File.model.js';
 export * from './PaymentRecord.model.js';
 export * from './Session.model.js';
 export * from './AuditLog.model.js';
+export * from './SavedItem.model.js';
+export * from './Invitation.model.js';
 

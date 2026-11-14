@@ -704,3 +704,216 @@ export async function toggleAdminUserVerify(userId: string) {
   return data;
 }
 
+// 10. Phase 9: Discovery, Intelligent Matching, Saved Items & Invitations API
+export async function searchFreelancersApi(params: {
+  q?: string;
+  category?: string;
+  skill?: string;
+  industry?: string;
+  minRate?: number;
+  maxRate?: number;
+  availability?: string;
+  verifiedOnly?: boolean;
+  briefId?: string;
+  sortBy?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const query = new URLSearchParams();
+  if (params.q) query.set('q', params.q);
+  if (params.category && params.category !== 'all') query.set('category', params.category);
+  if (params.skill) query.set('skill', params.skill);
+  if (params.industry) query.set('industry', params.industry);
+  if (params.minRate) query.set('minRate', String(params.minRate));
+  if (params.maxRate) query.set('maxRate', String(params.maxRate));
+  if (params.availability && params.availability !== 'all') query.set('availability', params.availability);
+  if (params.verifiedOnly) query.set('verifiedOnly', 'true');
+  if (params.briefId) query.set('briefId', params.briefId);
+  if (params.sortBy) query.set('sortBy', params.sortBy);
+  if (params.page) query.set('page', String(params.page));
+  if (params.limit) query.set('limit', String(params.limit));
+
+  const res = await fetch(`${API_BASE}/discovery/freelancers?${query.toString()}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to search freelancers');
+  return data;
+}
+
+export async function searchProjectsApi(params: {
+  q?: string;
+  category?: string;
+  skill?: string;
+  industry?: string;
+  minBudget?: number;
+  maxBudget?: number;
+  status?: string;
+  sortBy?: string;
+  page?: number;
+  limit?: number;
+}) {
+  const query = new URLSearchParams();
+  if (params.q) query.set('q', params.q);
+  if (params.category && params.category !== 'all') query.set('category', params.category);
+  if (params.skill) query.set('skill', params.skill);
+  if (params.industry) query.set('industry', params.industry);
+  if (params.minBudget) query.set('minBudget', String(params.minBudget));
+  if (params.maxBudget) query.set('maxBudget', String(params.maxBudget));
+  if (params.status && params.status !== 'all') query.set('status', params.status);
+  if (params.sortBy) query.set('sortBy', params.sortBy);
+  if (params.page) query.set('page', String(params.page));
+  if (params.limit) query.set('limit', String(params.limit));
+
+  const res = await fetch(`${API_BASE}/discovery/projects?${query.toString()}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to search projects');
+  return data;
+}
+
+export async function fetchBriefTalentMatch(briefId: string, freelancerId: string) {
+  const res = await fetch(`${API_BASE}/discovery/match?briefId=${briefId}&freelancerId=${freelancerId}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to evaluate compatibility');
+  return data;
+}
+
+export async function saveFreelancerApi(freelancerId: string, notes?: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/saved/freelancers/${freelancerId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ notes }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to save freelancer');
+  return data;
+}
+
+export async function removeSavedFreelancerApi(freelancerId: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/saved/freelancers/${freelancerId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to remove saved freelancer');
+  return data;
+}
+
+export async function fetchSavedFreelancersApi() {
+  const token = getAuthToken();
+  if (!token) return [];
+  const res = await fetch(`${API_BASE}/saved/freelancers`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch saved freelancers');
+  return data.savedFreelancers || [];
+}
+
+export async function saveProjectApi(projectId: string, notes?: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/saved/projects/${projectId}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ notes }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to save project');
+  return data;
+}
+
+export async function removeSavedProjectApi(projectId: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/saved/projects/${projectId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to remove saved project');
+  return data;
+}
+
+export async function fetchSavedProjectsApi() {
+  const token = getAuthToken();
+  if (!token) return [];
+  const res = await fetch(`${API_BASE}/saved/projects`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch saved projects');
+  return data.savedProjects || [];
+}
+
+export async function sendInvitationApi(briefId: string, freelancerId: string, message?: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/invitations`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ briefId, freelancerId, message }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to send invitation');
+  return data;
+}
+
+export async function fetchInvitationsApi(type: 'sent' | 'received' = 'received') {
+  const token = getAuthToken();
+  if (!token) return [];
+  const res = await fetch(`${API_BASE}/invitations?type=${type}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch invitations');
+  return data.invitations || [];
+}
+
+export async function acceptInvitationApi(id: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/invitations/${id}/accept`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to accept invitation');
+  return data;
+}
+
+export async function declineInvitationApi(id: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/invitations/${id}/decline`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to decline invitation');
+  return data;
+}
+
+export async function cancelInvitationApi(id: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/invitations/${id}/cancel`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to cancel invitation');
+  return data;
+}
+

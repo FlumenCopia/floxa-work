@@ -81,6 +81,13 @@ export async function updateUserProfile(req: AuthenticatedRequest, res: Response
       hourlyRate,
       minimumProjectBudget,
       availabilityStatus,
+      availability,
+      primaryCategory,
+      specializations,
+      industries,
+      yearsOfExperience,
+      location,
+      portfolioItems,
     } = req.body;
 
     const user = await User.findById(req.user.id);
@@ -125,6 +132,15 @@ export async function updateUserProfile(req: AuthenticatedRequest, res: Response
     if (availabilityStatus && ['available', 'busy', 'not_looking'].includes(availabilityStatus)) {
       profile.availabilityStatus = availabilityStatus;
     }
+    if (availability && ['available', 'busy', 'not_looking'].includes(availability)) {
+      profile.availabilityStatus = availability;
+    }
+    if (primaryCategory !== undefined) profile.primaryCategory = primaryCategory;
+    if (specializations !== undefined && Array.isArray(specializations)) profile.specializations = specializations;
+    if (industries !== undefined && Array.isArray(industries)) profile.industries = industries;
+    if (yearsOfExperience !== undefined) profile.yearsOfExperience = Number(yearsOfExperience) || 0;
+    if (location !== undefined) profile.location = location;
+    if (portfolioItems !== undefined && Array.isArray(portfolioItems)) profile.portfolioItems = portfolioItems;
 
     await profile.save();
 
