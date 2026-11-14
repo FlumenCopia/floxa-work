@@ -38,3 +38,4 @@ savedItemSchema.set('toJSON', {
 
 export const SavedItem: Model<ISavedItem> =
   mongoose.models.SavedItem || mongoose.model<ISavedItem>('SavedItem', savedItemSchema);
+

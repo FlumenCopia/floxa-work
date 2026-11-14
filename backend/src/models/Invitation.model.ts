@@ -52,3 +52,4 @@ invitationSchema.set('toJSON', {
 
 export const Invitation: Model<IInvitation> =
   mongoose.models.Invitation || mongoose.model<IInvitation>('Invitation', invitationSchema);
+

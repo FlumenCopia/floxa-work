@@ -120,3 +120,4 @@
 - `PUT /api/invitations/:id/accept` (or `POST`): Freelancer accepts invitation.
 - `PUT /api/invitations/:id/decline` (or `POST`): Freelancer declines invitation.
 - `PUT /api/invitations/:id/cancel` (or `POST`): Client cancels invitation.
+

@@ -66,3 +66,4 @@ Discovery and invitations strictly observe the core non-custodial foundation of 
 - Search and matching engines evaluate strategic alignment, never escrow deposits or financial custody.
 - Accepting a project invitation triggers real-time WebSocket communication and flags the candidate for evaluation; it **never** automatically creates a financial contract or disburses money.
 - All contracts require explicit agreement on diagnostic deliverables, milestone roadmaps, and direct peer-to-peer external payment settlement.
+

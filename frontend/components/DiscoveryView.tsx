@@ -856,3 +856,4 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
     </div>
   );
 };
+

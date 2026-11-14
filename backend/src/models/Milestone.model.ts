@@ -18,9 +18,23 @@ export type MilestonePaymentStatus =
   | 'cancelled';
 
 export interface IDeliverableSubmission {
+  version?: number;
+  title?: string;
   fileUrls: string[];
   notes: string;
+  submittedBy?: Types.ObjectId | string;
   submittedAt: Date;
+  reviewStatus?: 'pending' | 'revision_requested' | 'approved';
+  reviewFeedback?: string;
+  reviewedBy?: Types.ObjectId | string;
+  reviewedAt?: Date;
+}
+
+export interface IRevisionRequest {
+  feedback: string;
+  requestedBy?: Types.ObjectId | string;
+  requestedAt: Date;
+  submissionVersion?: number;
 }
 
 export interface IMilestonePaymentDetails {
@@ -46,12 +60,12 @@ export interface IMilestone {
   paymentDetails?: IMilestonePaymentDetails;
   escrowState?: string; // Legacy fallback
   submissions: IDeliverableSubmission[];
-  revisionRequests: {
-    feedback: string;
-    requestedAt: Date;
-  }[];
+  revisionRequests: IRevisionRequest[];
   reviewDeadline?: Date;
   approvedAt?: Date;
+  approvedBy?: Types.ObjectId | string;
+  acceptanceCriteria?: string[];
+  deliverableRequirements?: string[];
   paymentReportedAt?: Date;
   paymentAcknowledgedAt?: Date;
   createdAt?: Date;
@@ -60,11 +74,32 @@ export interface IMilestone {
 
 const deliverableSubmissionSchema = new Schema<IDeliverableSubmission>(
   {
+    version: { type: Number, default: 1 },
+    title: { type: String, default: '' },
     fileUrls: { type: [String], default: [] },
     notes: { type: String, default: '' },
+    submittedBy: { type: Schema.Types.ObjectId, ref: 'User' },
     submittedAt: { type: Date, default: Date.now },
+    reviewStatus: {
+      type: String,
+      enum: ['pending', 'revision_requested', 'approved'],
+      default: 'pending',
+    },
+    reviewFeedback: { type: String, default: '' },
+    reviewedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    reviewedAt: { type: Date, default: null },
   },
-  { _id: false }
+  { _id: true }
+);
+
+const revisionRequestSchema = new Schema<IRevisionRequest>(
+  {
+    feedback: { type: String, required: true },
+    requestedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+    requestedAt: { type: Date, default: Date.now },
+    submissionVersion: { type: Number, default: 1 },
+  },
+  { _id: true }
 );
 
 const milestoneSchema = new Schema<IMilestone>(
@@ -109,14 +144,12 @@ const milestoneSchema = new Schema<IMilestone>(
       default: 'awaiting_deposit',
     },
     submissions: { type: [deliverableSubmissionSchema], default: [] },
-    revisionRequests: [
-      {
-        feedback: { type: String, required: true },
-        requestedAt: { type: Date, default: Date.now },
-      },
-    ],
+    revisionRequests: { type: [revisionRequestSchema], default: [] },
     reviewDeadline: { type: Date, default: null },
     approvedAt: { type: Date, default: null },
+    approvedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    acceptanceCriteria: { type: [String], default: [] },
+    deliverableRequirements: { type: [String], default: [] },
     paymentReportedAt: { type: Date, default: null },
     paymentAcknowledgedAt: { type: Date, default: null },
   },

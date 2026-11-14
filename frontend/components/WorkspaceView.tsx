@@ -18,11 +18,36 @@ import {
   Check,
   AlertTriangle,
   Receipt,
+  ListTodo,
+  MessageSquare,
+  FolderArchive,
+  History,
+  Flag,
+  Plus,
+  ChevronRight,
+  Filter,
+  User,
+  Calendar,
+  Sparkles,
+  Download,
+  FileText,
+  CornerDownRight,
 } from 'lucide-react';
 import {
   fetchActiveContract,
+  fetchWorkspaceDetailsApi,
   approveMilestoneDeliverable,
   submitMilestoneDeliverable,
+  requestMilestoneRevisionApi,
+  fetchContractTasksApi,
+  createContractTaskApi,
+  updateTaskApi,
+  addTaskCommentApi,
+  fetchContractActivityApi,
+  fetchContractFilesApi,
+  confirmProjectCloseoutApi,
+  fetchContractMessagesApi,
+  sendContractMessageApi,
   reportMilestonePayment,
   acknowledgeMilestonePayment,
   disputeMilestonePayment,
@@ -31,20 +56,23 @@ import {
 } from '@/lib/api';
 
 export const WorkspaceView: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<'milestones' | 'tasks' | 'discussion' | 'files' | 'activity' | 'closeout'>('milestones');
   const [activeMilestoneNum, setActiveMilestoneNum] = useState(1);
-  const [contractData, setContractData] = useState<{
-    contract: any;
-    milestones: any[];
-    paymentRecords?: any[];
-  } | null>(null);
+  const [workspaceData, setWorkspaceData] = useState<any | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Deliverable Submission Modal State
+  // Deliverable Submission Modal State (Freelancer)
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState(false);
   const [isUploadingDeliverable, setIsUploadingDeliverable] = useState(false);
+  const [submissionTitle, setSubmissionTitle] = useState('');
   const [deliverableNotes, setDeliverableNotes] = useState('');
   const [deliverableFileName, setDeliverableFileName] = useState('Deliverable_Handover_Bundle.zip');
+
+  // Revision Request Modal State (Client)
+  const [isRevisionModalOpen, setIsRevisionModalOpen] = useState(false);
+  const [revisionFeedback, setRevisionFeedback] = useState('');
 
   // Record Payment Modal State (Client)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
@@ -58,57 +86,106 @@ export const WorkspaceView: React.FC = () => {
   const [isDisputeModalOpen, setIsDisputeModalOpen] = useState(false);
   const [disputeReason, setDisputeReason] = useState('');
 
-  const [actionMessage, setActionMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  // Task Management State
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [taskFilterStatus, setTaskFilterStatus] = useState<string>('all');
+  const [isCreateTaskModalOpen, setIsCreateTaskModalOpen] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskDesc, setNewTaskDesc] = useState('');
+  const [newTaskPriority, setNewTaskPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
+  const [newTaskDueDate, setNewTaskDueDate] = useState('');
+  const [activeTaskIdForComment, setActiveTaskIdForComment] = useState<string | null>(null);
+  const [taskCommentText, setTaskCommentText] = useState('');
+
+  // Discussion & Chat State
+  const [discussionMessages, setDiscussionMessages] = useState<any[]>([]);
+  const [newDiscussionText, setNewDiscussionText] = useState('');
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
+
+  // Files & Activity State
+  const [contractFiles, setContractFiles] = useState<any[]>([]);
+  const [activities, setActivities] = useState<any[]>([]);
+
+  // Closeout State
+  const [closeoutNotes, setCloseoutNotes] = useState('');
+  const [isConfirmingCloseout, setIsConfirmingCloseout] = useState(false);
 
   const currentUser = getAuthUser();
   const isClient = currentUser?.role === 'client';
 
-  const loadContract = async () => {
+  const loadWorkspace = async () => {
     setIsLoading(true);
     try {
-      const data = await fetchActiveContract();
-      if (data && data.contract && data.milestones && data.milestones.length > 0) {
-        setContractData(data);
+      const active = await fetchActiveContract();
+      if (active && active.contract) {
+        const full = await fetchWorkspaceDetailsApi(active.contract._id || active.contract.id);
+        setWorkspaceData(full);
+        setTasks(full.tasks || []);
+        setActivities(full.activities || []);
       } else {
-        setContractData(null);
+        setWorkspaceData(null);
       }
     } catch {
-      setContractData(null);
+      setWorkspaceData(null);
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    loadContract();
+    loadWorkspace();
   }, []);
+
+  // Fetch tab-specific data on tab switch
+  useEffect(() => {
+    if (!workspaceData?.contract?._id) return;
+    const contractId = workspaceData.contract._id;
+
+    if (activeTab === 'tasks') {
+      fetchContractTasksApi(contractId, { status: taskFilterStatus !== 'all' ? taskFilterStatus : undefined })
+        .then((t) => setTasks(t))
+        .catch(() => {});
+    } else if (activeTab === 'discussion') {
+      fetchContractMessagesApi(contractId)
+        .then((m) => setDiscussionMessages(m))
+        .catch(() => {});
+    } else if (activeTab === 'files') {
+      fetchContractFilesApi(contractId)
+        .then((f) => setContractFiles(f))
+        .catch(() => {});
+    } else if (activeTab === 'activity') {
+      fetchContractActivityApi(contractId)
+        .then((a) => setActivities(a.activities || []))
+        .catch(() => {});
+    }
+  }, [activeTab, taskFilterStatus, workspaceData?.contract?._id]);
 
   if (isLoading) {
     return (
       <div className="floxa-card py-16 text-center text-slate-500">
         <div className="inline-block animate-spin w-6 h-6 border-2 border-[#0084ff] border-t-transparent rounded-full mb-3" />
-        <div className="text-xs font-medium">Loading live milestone contract from database...</div>
+        <div className="text-xs font-medium">Loading live project collaboration workspace from database...</div>
       </div>
     );
   }
 
-  if (!contractData || !contractData.contract) {
+  if (!workspaceData || !workspaceData.contract) {
     return (
       <div className="floxa-card py-16 text-center space-y-4">
         <div className="w-14 h-14 rounded-2xl bg-[#0084ff]/10 border border-[#0084ff]/25 flex items-center justify-center mx-auto text-[#0084ff]">
           <Layers size={26} />
         </div>
         <div className="max-w-md mx-auto space-y-1.5">
-          <h3 className="text-base font-bold text-slate-900">No Active Milestone Contract</h3>
+          <h3 className="text-base font-bold text-slate-900">No Active Project Workspace</h3>
           <p className="text-xs text-slate-500 leading-relaxed font-normal">
-            Contracts are initialized when a client accepts a Mini-Discovery proposal and both parties sign the digital project agreement.
+            A dedicated project workspace is initialized when a client accepts a Mini-Discovery proposal and both parties sign the digital project agreement.
           </p>
         </div>
       </div>
     );
   }
 
-  const { contract, milestones, paymentRecords = [] } = contractData;
+  const { contract, milestones = [], paymentRecords = [], closeoutChecklist, taskStats } = workspaceData;
   const brief = contract.briefId || {};
   const clientInfo = contract.clientId || {};
   const freelancerInfo = contract.freelancerId || {};
@@ -116,37 +193,58 @@ export const WorkspaceView: React.FC = () => {
   const currentMilestone =
     milestones.find((m: any) => m.milestoneNumber === activeMilestoneNum) || milestones[0];
 
-  const deliverableStatus = currentMilestone?.deliverableStatus || (currentMilestone?.escrowState === 'released' ? 'approved' : currentMilestone?.escrowState === 'in_review' ? 'in_review' : 'in_progress');
-  const paymentStatus = currentMilestone?.paymentStatus || (currentMilestone?.escrowState === 'released' ? 'acknowledged_by_freelancer' : 'not_recorded');
+  const deliverableStatus = currentMilestone?.deliverableStatus || 'in_progress';
+  const paymentStatus = currentMilestone?.paymentStatus || 'not_recorded';
 
   const isDeliverableApproved = deliverableStatus === 'approved';
   const isDeliverableInReview = deliverableStatus === 'in_review';
+  const isRevisionRequested = deliverableStatus === 'revision_requested';
   const isPaymentReported = paymentStatus === 'reported_by_client';
   const isPaymentAcknowledged = paymentStatus === 'acknowledged_by_freelancer';
   const isPaymentDisputed = paymentStatus === 'disputed';
 
-  // 1. Deliverable Handover Submission
+  // 1. Deliverable Handover Submission (Freelancer)
   const handleSubmitDeliverable = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentMilestone) return;
     try {
       await submitMilestoneDeliverable(currentMilestone._id || currentMilestone.id, {
+        title: submissionTitle || `Milestone ${currentMilestone.milestoneNumber} Deliverable Package`,
         fileUrls: [deliverableFileName],
         notes: deliverableNotes || 'Handover deliverables uploaded for client review.',
       });
       setIsSubmitModalOpen(false);
+      setSubmissionTitle('');
       setDeliverableNotes('');
       setActionMessage({
         type: 'success',
         text: `Deliverable for Milestone ${currentMilestone.milestoneNumber} submitted! Client inspection window open.`,
       });
-      await loadContract();
+      await loadWorkspace();
     } catch (err: any) {
       alert(err.message || 'Failed to submit deliverable');
     }
   };
 
-  // 2. Deliverable Approval by Client
+  // 2. Client Requests Revision
+  const handleRequestRevision = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentMilestone || !revisionFeedback.trim()) return;
+    try {
+      await requestMilestoneRevisionApi(currentMilestone._id || currentMilestone.id, revisionFeedback);
+      setIsRevisionModalOpen(false);
+      setRevisionFeedback('');
+      setActionMessage({
+        type: 'success',
+        text: `Revision requested for Milestone ${currentMilestone.milestoneNumber}. Freelancer notified.`,
+      });
+      await loadWorkspace();
+    } catch (err: any) {
+      alert(err.message || 'Failed to request revision');
+    }
+  };
+
+  // 3. Deliverable Approval by Client
   const handleApproveDeliverable = async () => {
     if (!currentMilestone) return;
     setIsProcessing(true);
@@ -155,9 +253,9 @@ export const WorkspaceView: React.FC = () => {
       await approveMilestoneDeliverable(currentMilestone._id || currentMilestone.id);
       setActionMessage({
         type: 'success',
-        text: `Milestone ${currentMilestone.milestoneNumber} deliverable approved! You can now arrange direct payment with the freelancer.`,
+        text: `Milestone ${currentMilestone.milestoneNumber} deliverable approved! You can now arrange direct external payment with the freelancer.`,
       });
-      await loadContract();
+      await loadWorkspace();
     } catch (err: any) {
       setActionMessage({
         type: 'error',
@@ -168,7 +266,7 @@ export const WorkspaceView: React.FC = () => {
     }
   };
 
-  // 3. Client Reports Direct Payment
+  // 4. Client Reports Direct Payment
   const handleReportPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentMilestone) return;
@@ -188,7 +286,7 @@ export const WorkspaceView: React.FC = () => {
         type: 'success',
         text: `Direct payment reported for Milestone ${currentMilestone.milestoneNumber}. Freelancer notified to acknowledge receipt.`,
       });
-      await loadContract();
+      await loadWorkspace();
     } catch (err: any) {
       alert(err.message || 'Failed to record payment');
     } finally {
@@ -196,7 +294,7 @@ export const WorkspaceView: React.FC = () => {
     }
   };
 
-  // 4. Freelancer Acknowledges Direct Payment
+  // 5. Freelancer Acknowledges Direct Payment
   const handleAcknowledgePayment = async () => {
     if (!currentMilestone) return;
     setIsProcessing(true);
@@ -204,9 +302,9 @@ export const WorkspaceView: React.FC = () => {
       await acknowledgeMilestonePayment(currentMilestone._id || currentMilestone.id);
       setActionMessage({
         type: 'success',
-        text: `Direct payment for Milestone ${currentMilestone.milestoneNumber} confirmed and acknowledged!`,
+        text: `Confirmed! Payment receipt acknowledged for Milestone ${currentMilestone.milestoneNumber}.`,
       });
-      await loadContract();
+      await loadWorkspace();
     } catch (err: any) {
       alert(err.message || 'Failed to acknowledge payment');
     } finally {
@@ -214,10 +312,10 @@ export const WorkspaceView: React.FC = () => {
     }
   };
 
-  // 5. Dispute Direct Payment
-  const handleDisputePaymentSubmit = async (e: React.FormEvent) => {
+  // 6. Dispute Payment
+  const handleDisputePayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentMilestone) return;
+    if (!currentMilestone || !disputeReason) return;
     setIsProcessing(true);
     try {
       await disputeMilestonePayment(currentMilestone._id || currentMilestone.id, disputeReason);
@@ -225,9 +323,9 @@ export const WorkspaceView: React.FC = () => {
       setDisputeReason('');
       setActionMessage({
         type: 'error',
-        text: `Discrepancy reported for Milestone ${currentMilestone.milestoneNumber}. Status marked as disputed.`,
+        text: `Payment reported as disputed. Mediation channel opened.`,
       });
-      await loadContract();
+      await loadWorkspace();
     } catch (err: any) {
       alert(err.message || 'Failed to dispute payment');
     } finally {
@@ -235,368 +333,990 @@ export const WorkspaceView: React.FC = () => {
     }
   };
 
-  const handleDeliverableFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploadingDeliverable(true);
+  // 7. Create Task
+  const handleCreateTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTaskTitle.trim()) return;
     try {
-      const res = await uploadFile(file, 'deliverable', false);
-      setDeliverableFileName(res.downloadUrl || res.accessUrl || res.originalName);
+      await createContractTaskApi(contract._id, {
+        title: newTaskTitle.trim(),
+        description: newTaskDesc.trim(),
+        priority: newTaskPriority,
+        dueDate: newTaskDueDate || undefined,
+        milestoneId: currentMilestone?._id || undefined,
+      });
+      setIsCreateTaskModalOpen(false);
+      setNewTaskTitle('');
+      setNewTaskDesc('');
+      setNewTaskDueDate('');
+      const updatedTasks = await fetchContractTasksApi(contract._id);
+      setTasks(updatedTasks);
+    } catch (err: any) {
+      alert(err.message || 'Failed to create task');
+    }
+  };
+
+  // 8. Toggle Task Status
+  const handleToggleTaskStatus = async (task: any) => {
+    const nextStatus = task.status === 'completed' ? 'in_progress' : 'completed';
+    try {
+      await updateTaskApi(task._id, { status: nextStatus });
+      const updatedTasks = await fetchContractTasksApi(contract._id);
+      setTasks(updatedTasks);
+    } catch (err: any) {
+      alert(err.message || 'Failed to update task');
+    }
+  };
+
+  // 9. Add Task Comment
+  const handleAddTaskComment = async (taskId: string) => {
+    if (!taskCommentText.trim()) return;
+    try {
+      await addTaskCommentApi(taskId, taskCommentText.trim());
+      setTaskCommentText('');
+      const updatedTasks = await fetchContractTasksApi(contract._id);
+      setTasks(updatedTasks);
+    } catch (err: any) {
+      alert(err.message || 'Failed to add comment');
+    }
+  };
+
+  // 10. Send Discussion Message
+  const handleSendDiscussion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDiscussionText.trim()) return;
+    setIsSendingMessage(true);
+    try {
+      const msg = await sendContractMessageApi(contract._id, newDiscussionText.trim());
+      setDiscussionMessages((prev) => [...prev, msg]);
+      setNewDiscussionText('');
+    } catch (err: any) {
+      alert(err.message || 'Failed to send message');
+    } finally {
+      setIsSendingMessage(false);
+    }
+  };
+
+  // 11. Confirm Closeout
+  const handleConfirmCloseout = async () => {
+    setIsConfirmingCloseout(true);
+    try {
+      await confirmProjectCloseoutApi(contract._id, closeoutNotes);
       setActionMessage({
         type: 'success',
-        text: `Uploaded "${file.name}" (${(file.size / 1024).toFixed(1)} KB) successfully.`,
+        text: 'Closeout confirmed. Project status updated.',
       });
+      await loadWorkspace();
     } catch (err: any) {
-      alert(err.message || 'File upload failed');
+      alert(err.message || 'Failed to confirm closeout');
     } finally {
-      setIsUploadingDeliverable(false);
+      setIsConfirmingCloseout(false);
     }
   };
-
-  const handleReceiptFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploadingReceipt(true);
-    try {
-      const res = await uploadFile(file, 'attachment', true);
-      setReceiptFileUrl(res.downloadUrl || res.accessUrl);
-      setActionMessage({
-        type: 'success',
-        text: `Payment receipt "${file.name}" uploaded.`,
-      });
-    } catch (err: any) {
-      alert(err.message || 'Receipt upload failed');
-    } finally {
-      setIsUploadingReceipt(false);
-    }
-  };
-
-  const handleInspectDeliverable = () => {
-    const fileUrl = currentMilestone?.submissions?.[0]?.fileUrls?.[0];
-    if (!fileUrl) {
-      alert('Deliverable package preview ready.');
-      return;
-    }
-    if (fileUrl.startsWith('http')) {
-      window.open(fileUrl, '_blank');
-    } else {
-      window.open(`http://localhost:5001/api/files/${encodeURIComponent(fileUrl)}/download`, '_blank');
-    }
-  };
-
-  const totalAcknowledged = milestones
-    .filter((m: any) => m.paymentStatus === 'acknowledged_by_freelancer' || m.escrowState === 'released')
-    .reduce((sum: number, m: any) => sum + (m.amount || 0), 0);
 
   return (
-    <div className="space-y-5">
-      {/* Platform Non-Custody Permanent Disclaimer */}
-      <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-start gap-2.5 text-xs text-slate-600">
-        <ShieldCheck size={16} className="text-[#0084ff] shrink-0 mt-0.5" />
-        <div className="leading-relaxed">
-          <strong className="text-slate-900">FLOXA Work Direct Milestone Billing:</strong> Payments occur directly between client and freelancer via external methods (Bank Transfer, UPI, Stripe, or Razorpay). FLOXA Work facilitates milestone agreement and deliverable tracking; it does not hold, collect, or disburse customer funds.
+    <div className="space-y-6 animate-in fade-in pb-12">
+      {/* 1. PROJECT WORKSPACE HEADER CARD */}
+      <div className="floxa-card p-6 bg-gradient-to-r from-slate-900 to-slate-950 text-white rounded-3xl shadow-xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#0084ff]/10 rounded-full blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full bg-[#0084ff] text-white tracking-wider">
+                {contract.status === 'completed' ? 'Project Completed' : 'Active Collaboration Workspace'}
+              </span>
+              <span className="text-xs text-slate-400 font-mono">
+                Contract ID: {contract._id?.slice(-8)}
+              </span>
+            </div>
+
+            <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              {brief.title || 'Client Project Agreement'}
+            </h1>
+
+            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-300">
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-400">Client:</span>
+                <span className="font-semibold text-white">{clientInfo.name || 'Client'}</span>
+              </div>
+              <span className="text-slate-600">•</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-400">Specialist:</span>
+                <span className="font-semibold text-white">{freelancerInfo.name || 'Specialist'}</span>
+              </div>
+              <span className="text-slate-600">•</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-400">Agreed Price:</span>
+                <span className="font-mono font-bold text-[#0084ff]">
+                  ${contract.totalBudget?.toLocaleString()} {contract.currency}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Stats Pill */}
+          <div className="flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl p-3.5 px-4 backdrop-blur-md">
+            <div className="text-center px-2">
+              <div className="text-lg font-black text-[#0084ff] font-mono">
+                {milestones.filter((m: any) => m.deliverableStatus === 'approved').length}/{milestones.length}
+              </div>
+              <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
+                Milestones
+              </div>
+            </div>
+            <div className="w-px h-8 bg-white/10" />
+            <div className="text-center px-2">
+              <div className="text-lg font-black text-emerald-400 font-mono">
+                {taskStats?.completed || 0}/{taskStats?.total || 0}
+              </div>
+              <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
+                Tasks Done
+              </div>
+            </div>
+            <div className="w-px h-8 bg-white/10" />
+            <div className="text-center px-2">
+              <div className="text-lg font-black text-indigo-400 font-mono">
+                {closeoutChecklist?.isFullyClosed ? '100%' : closeoutChecklist?.isCloseoutReady ? '90%' : '50%'}
+              </div>
+              <div className="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">
+                Handover
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* Action Message Banner */}
+        {actionMessage && (
+          <div
+            className={`mt-4 p-3.5 rounded-2xl text-xs font-semibold flex items-center justify-between ${
+              actionMessage.type === 'success'
+                ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-300'
+                : 'bg-red-500/15 border border-red-500/30 text-red-300'
+            }`}
+          >
+            <span>{actionMessage.text}</span>
+            <button onClick={() => setActionMessage(null)} className="opacity-70 hover:opacity-100">
+              <X size={14} />
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Alert Notice */}
-      {actionMessage && (
-        <div
-          className={`p-3.5 rounded-xl text-xs font-semibold flex items-center justify-between shadow-sm animate-in fade-in ${
-            actionMessage.type === 'success'
-              ? 'bg-emerald-50 border border-emerald-200 text-emerald-900'
-              : 'bg-red-50 border border-red-200 text-red-900'
+      {/* 2. WORKSPACE TAB NAVIGATION */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 border-b border-slate-200">
+        <button
+          onClick={() => setActiveTab('milestones')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+            activeTab === 'milestones'
+              ? 'bg-[#0084ff] text-white shadow-md shadow-[#0084ff]/25'
+              : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
           }`}
         >
-          <div className="flex items-center gap-2">
-            {actionMessage.type === 'success' ? (
-              <CheckCircle2 size={16} className="text-emerald-600" />
-            ) : (
-              <AlertCircle size={16} className="text-red-600" />
-            )}
-            <span>{actionMessage.text}</span>
+          <Layers size={14} />
+          <span>Milestones & Deliverables</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('tasks')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+            activeTab === 'tasks'
+              ? 'bg-[#0084ff] text-white shadow-md shadow-[#0084ff]/25'
+              : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+          }`}
+        >
+          <ListTodo size={14} />
+          <span>Task Board</span>
+          {taskStats?.total > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-black/15">
+              {taskStats.total}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveTab('discussion')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+            activeTab === 'discussion'
+              ? 'bg-[#0084ff] text-white shadow-md shadow-[#0084ff]/25'
+              : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+          }`}
+        >
+          <MessageSquare size={14} />
+          <span>Discussion</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('files')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+            activeTab === 'files'
+              ? 'bg-[#0084ff] text-white shadow-md shadow-[#0084ff]/25'
+              : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+          }`}
+        >
+          <FolderArchive size={14} />
+          <span>Files & Vault</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('activity')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+            activeTab === 'activity'
+              ? 'bg-[#0084ff] text-white shadow-md shadow-[#0084ff]/25'
+              : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+          }`}
+        >
+          <History size={14} />
+          <span>Activity Timeline</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('closeout')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${
+            activeTab === 'closeout'
+              ? 'bg-[#0084ff] text-white shadow-md shadow-[#0084ff]/25'
+              : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+          }`}
+        >
+          <Flag size={14} />
+          <span>Project Handover</span>
+          {closeoutChecklist?.isCloseoutReady && !closeoutChecklist?.isFullyClosed && (
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          )}
+        </button>
+      </div>
+
+      {/* ========================================================
+          TAB 1: MILESTONES & DELIVERABLES WORKFLOW
+          ======================================================== */}
+      {activeTab === 'milestones' && (
+        <div className="space-y-6">
+          {/* Milestone Selector Ribbon */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {milestones.map((m: any) => {
+              const isSelected = m.milestoneNumber === activeMilestoneNum;
+              const isApproved = m.deliverableStatus === 'approved';
+              const isInReview = m.deliverableStatus === 'in_review';
+              const isRev = m.deliverableStatus === 'revision_requested';
+
+              return (
+                <button
+                  key={m._id || m.id}
+                  onClick={() => setActiveMilestoneNum(m.milestoneNumber)}
+                  className={`p-4 rounded-2xl text-left border transition-all ${
+                    isSelected
+                      ? 'bg-white border-[#0084ff] ring-2 ring-[#0084ff]/20 shadow-md'
+                      : 'bg-white/80 border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="text-slate-500">Milestone {m.milestoneNumber}</span>
+                    <span className="font-mono text-[#0084ff]">${m.amount?.toLocaleString()}</span>
+                  </div>
+                  <div className="text-sm font-bold text-slate-900 truncate mt-1">{m.title}</div>
+                  <div className="mt-2 flex items-center gap-1.5">
+                    {isApproved ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        Deliverable Approved
+                      </span>
+                    ) : isRev ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                        Revision Requested
+                      </span>
+                    ) : isInReview ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#0084ff]/10 text-[#0084ff] border border-[#0084ff]/20 animate-pulse">
+                        In Client Review
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                        In Progress
+                      </span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
           </div>
-          <button onClick={() => setActionMessage(null)} className="text-slate-400 hover:text-slate-700">
-            <X size={14} />
-          </button>
+
+          {/* Detailed Milestone Inspection Card */}
+          {currentMilestone && (
+            <div className="floxa-card p-6 space-y-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-100">
+                <div>
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-[#0084ff]">
+                    Milestone {currentMilestone.milestoneNumber} of {milestones.length}
+                  </span>
+                  <h2 className="text-lg font-black text-slate-900 mt-0.5">
+                    {currentMilestone.title}
+                  </h2>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    {currentMilestone.description || 'Full milestone deliverable execution.'}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="text-2xl font-black font-mono text-[#0084ff]">
+                    ${currentMilestone.amount?.toLocaleString()}
+                  </div>
+                  <div className="text-[10px] text-slate-500 font-medium">Contractual Value</div>
+                </div>
+              </div>
+
+              {/* TWO SEPARATE STATE MACHINES: DELIVERABLE STATE vs EXTERNAL PAYMENT STATE */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* DELIVERABLE WORKFLOW BOX */}
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">1. Deliverable Review State</span>
+                    <span
+                      className={`text-[10.5px] font-bold px-2 py-0.5 rounded-full ${
+                        isDeliverableApproved
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : isRevisionRequested
+                          ? 'bg-amber-100 text-amber-800'
+                          : isDeliverableInReview
+                          ? 'bg-[#0084ff]/15 text-[#0084ff]'
+                          : 'bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {deliverableStatus.toUpperCase().replace('_', ' ')}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                    {isDeliverableApproved
+                      ? 'Deliverable accepted and approved by the client.'
+                      : isRevisionRequested
+                      ? 'Client requested adjustments. See revision feedback below.'
+                      : isDeliverableInReview
+                      ? 'Deliverable package is currently under client review.'
+                      : 'Specialist is actively developing this milestone.'}
+                  </p>
+
+                  {/* Actions for Deliverable */}
+                  <div className="pt-2 flex flex-wrap items-center gap-2">
+                    {!isClient && (
+                      <button
+                        onClick={() => setIsSubmitModalOpen(true)}
+                        className="btn-cyan-pill text-xs px-4 py-2"
+                      >
+                        <Upload size={13} />
+                        <span>
+                          {currentMilestone.submissions?.length > 0 ? 'Resubmit Revision' : 'Submit Deliverable'}
+                        </span>
+                      </button>
+                    )}
+
+                    {isClient && isDeliverableInReview && (
+                      <>
+                        <button
+                          onClick={handleApproveDeliverable}
+                          disabled={isProcessing}
+                          className="px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5"
+                        >
+                          <Check size={14} />
+                          <span>Approve Deliverable</span>
+                        </button>
+                        <button
+                          onClick={() => setIsRevisionModalOpen(true)}
+                          className="px-4 py-2 rounded-full bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5"
+                        >
+                          <AlertTriangle size={14} />
+                          <span>Request Revision</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* PAYMENT SETTLEMENT BOX (0% PLATFORM CUSTODY) */}
+                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-800">2. Direct Payment Settlement</span>
+                    <span
+                      className={`text-[10.5px] font-bold px-2 py-0.5 rounded-full ${
+                        isPaymentAcknowledged
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : isPaymentReported
+                          ? 'bg-[#0084ff]/15 text-[#0084ff]'
+                          : isPaymentDisputed
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-slate-200 text-slate-700'
+                      }`}
+                    >
+                      {paymentStatus.toUpperCase().replace('_', ' ')}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-600 leading-relaxed font-normal">
+                    {isPaymentAcknowledged
+                      ? 'Freelancer confirmed payment receipt in their external account.'
+                      : isPaymentReported
+                      ? 'Client recorded external payment. Awaiting freelancer confirmation.'
+                      : isPaymentDisputed
+                      ? 'Payment record marked disputed.'
+                      : 'Direct payment to be settled via bank transfer, UPI, or direct Stripe invoice.'}
+                  </p>
+
+                  <div className="pt-2 flex flex-wrap items-center gap-2">
+                    {isClient && !isPaymentAcknowledged && (
+                      <button
+                        onClick={() => setIsPaymentModalOpen(true)}
+                        className="btn-cyan-pill text-xs px-4 py-2"
+                      >
+                        <Receipt size={13} />
+                        <span>Record Direct Payment</span>
+                      </button>
+                    )}
+
+                    {!isClient && isPaymentReported && (
+                      <>
+                        <button
+                          onClick={handleAcknowledgePayment}
+                          disabled={isProcessing}
+                          className="px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5"
+                        >
+                          <CheckCircle2 size={14} />
+                          <span>Confirm Receipt</span>
+                        </button>
+                        <button
+                          onClick={() => setIsDisputeModalOpen(true)}
+                          className="px-4 py-2 rounded-full bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5"
+                        >
+                          <AlertCircle size={14} />
+                          <span>Dispute</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* SUBMISSION VERSION HISTORY (Preserved without overwriting) */}
+              <div className="space-y-3 pt-3 border-t border-slate-100">
+                <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
+                  <History size={14} className="text-[#0084ff]" />
+                  <span>Deliverable Submissions & Revision History</span>
+                </h3>
+
+                {currentMilestone.submissions && currentMilestone.submissions.length > 0 ? (
+                  <div className="space-y-2.5">
+                    {currentMilestone.submissions.map((sub: any, idx: number) => (
+                      <div
+                        key={idx}
+                        className="p-3.5 rounded-xl bg-white border border-slate-200 text-xs space-y-1.5 shadow-sm"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-extrabold text-[#0084ff]">
+                            Version {sub.version || idx + 1}: {sub.title || 'Deliverable Package'}
+                          </span>
+                          <span className="text-[10.5px] text-slate-400 font-mono">
+                            {new Date(sub.submittedAt).toLocaleString()}
+                          </span>
+                        </div>
+                        <p className="text-slate-700 leading-relaxed font-normal">{sub.notes}</p>
+                        <div className="flex items-center gap-2 pt-1 text-[11px] text-slate-500">
+                          <Paperclip size={12} />
+                          <span>Files: {(sub.fileUrls || []).join(', ')}</span>
+                          {sub.reviewStatus && (
+                            <span className="ml-auto font-bold uppercase text-[10px]">
+                              Status: {sub.reviewStatus}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl bg-slate-50 text-slate-500 text-xs text-center border border-dashed border-slate-200">
+                    No deliverables submitted for this milestone yet.
+                  </div>
+                )}
+
+                {/* Revision requests list */}
+                {currentMilestone.revisionRequests && currentMilestone.revisionRequests.length > 0 && (
+                  <div className="space-y-2 pt-2">
+                    <span className="text-xs font-bold text-amber-800">Client Feedback Requests:</span>
+                    {currentMilestone.revisionRequests.map((rev: any, rIdx: number) => (
+                      <div
+                        key={rIdx}
+                        className="p-3 rounded-xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900 space-y-1"
+                      >
+                        <div className="flex items-center justify-between font-bold">
+                          <span>Revision Request #{rIdx + 1}</span>
+                          <span className="text-[10px] font-mono text-amber-700">
+                            {new Date(rev.requestedAt).toLocaleString()}
+                          </span>
+                        </div>
+                        <p>{rev.feedback}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Active Contract Header */}
-      <div className="floxa-card space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-          <div>
+      {/* ========================================================
+          TAB 2: TASK MANAGEMENT BOARD
+          ======================================================== */}
+      {activeTab === 'tasks' && (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[11px] font-bold text-[#0084ff] uppercase tracking-wider">
-                Active Project Agreement
-              </span>
-            </div>
-            <h1 className="text-base sm:text-lg font-bold text-slate-900 mt-0.5">
-              {brief.title || 'Client Brief'}
-            </h1>
-            <div className="text-xs text-slate-500 font-medium">
-              {isClient ? (
-                <span>Talent: <strong>{freelancerInfo.name || 'Verified Talent'}</strong> (@{freelancerInfo.handle || 'talent'})</span>
-              ) : (
-                <span>Client: <strong>{clientInfo.name || 'Client Lead'}</strong> (@{clientInfo.handle || 'client'})</span>
-              )}
-            </div>
-          </div>
-
-          <div className="text-left sm:text-right">
-            <div className="text-xs text-slate-500 font-medium">Total Project Value</div>
-            <div className="text-xl sm:text-2xl font-mono font-bold text-slate-900">
-              ${contract.totalBudget?.toLocaleString()}
-            </div>
-            <div className="text-[10px] text-emerald-600 font-semibold">
-              ${totalAcknowledged.toLocaleString()} Direct Settled
-            </div>
-          </div>
-        </div>
-
-        {/* Milestone Steps Selector */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-          {milestones.map((m: any) => {
-            const isSelected = m.milestoneNumber === activeMilestoneNum;
-            const isMApproved = m.deliverableStatus === 'approved' || m.escrowState === 'released';
-            const isMAcknowledged = m.paymentStatus === 'acknowledged_by_freelancer' || m.escrowState === 'released';
-
-            return (
-              <button
-                key={m._id || m.id}
-                onClick={() => setActiveMilestoneNum(m.milestoneNumber)}
-                className={`p-3.5 rounded-xl border text-left transition-all relative ${
-                  isSelected
-                    ? 'border-[#0084ff] bg-[#0084ff]/5 shadow-sm ring-1 ring-[#0084ff]'
-                    : 'border-slate-200 bg-white hover:border-slate-300'
-                }`}
+              <span className="text-xs font-bold text-slate-700">Filter Status:</span>
+              <select
+                value={taskFilterStatus}
+                onChange={(e) => setTaskFilterStatus(e.target.value)}
+                className="text-xs p-1.5 px-3 rounded-xl border border-slate-200 bg-white font-medium"
               >
-                <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider mb-1">
-                  <span className={isSelected ? 'text-[#0084ff]' : 'text-slate-500'}>
-                    Milestone {m.milestoneNumber}
-                  </span>
-                  <span className="font-mono text-slate-900 font-bold">${m.amount.toLocaleString()}</span>
-                </div>
-                <div className="text-xs font-semibold text-slate-800 line-clamp-1">{m.title}</div>
-                <div className="mt-2 flex items-center justify-between text-[10.5px]">
-                  <span className={isMApproved ? 'text-emerald-600 font-bold' : 'text-slate-500 font-medium'}>
-                    {isMApproved ? '✓ Deliverable Approved' : 'In Progress'}
-                  </span>
-                  <span className={isMAcknowledged ? 'text-emerald-700 font-semibold' : 'text-amber-600'}>
-                    {isMAcknowledged ? 'Paid Direct' : 'Pending Direct'}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Current Active Milestone Detail */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
-            <div>
-              <span className="text-[11px] font-bold text-[#0084ff] uppercase tracking-wider">
-                Milestone {currentMilestone?.milestoneNumber} of 3
-              </span>
-              <h3 className="text-sm sm:text-base font-bold text-slate-900 mt-0.5">
-                {currentMilestone?.title}
-              </h3>
-              <div className="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-3">
-                <span>Deliverable: <strong className={isDeliverableApproved ? 'text-emerald-600 font-bold' : isDeliverableInReview ? 'text-[#0084ff] font-bold' : 'text-slate-700'}>{isDeliverableApproved ? 'Approved by Client' : isDeliverableInReview ? 'Under Inspection Window' : 'In Progress'}</strong></span>
-                <span>•</span>
-                <span>Payment: <strong className={isPaymentAcknowledged ? 'text-emerald-600 font-bold' : isPaymentReported ? 'text-sky-600 font-bold' : isPaymentDisputed ? 'text-red-600 font-bold' : 'text-slate-700'}>{isPaymentAcknowledged ? 'Acknowledged by Freelancer' : isPaymentReported ? 'Reported by Client' : isPaymentDisputed ? 'Disputed' : 'Not Yet Recorded'}</strong></span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-base font-bold text-slate-900">
-              ${currentMilestone?.amount.toLocaleString()}
-            </div>
-          </div>
-
-          {/* Deliverable File Card */}
-          <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-lg bg-[#0084ff]/10 text-[#0084ff] flex items-center justify-center shrink-0">
-                <FileCheck size={18} />
-              </div>
-              <div className="min-w-0">
-                <div className="text-xs font-semibold text-slate-900 truncate">
-                  {currentMilestone?.submissions?.[0]?.fileUrls?.[0] || 'Deliverable_Handover_Bundle.zip'}
-                </div>
-                <div className="text-[10.5px] text-slate-500 font-medium truncate">
-                  {currentMilestone?.submissions?.[0]?.notes || 'Verified vector tokens, brand architecture & source files.'}
-                </div>
-              </div>
+                <option value="all">All Tasks</option>
+                <option value="todo">To Do</option>
+                <option value="in_progress">In Progress</option>
+                <option value="in_review">In Review</option>
+                <option value="completed">Completed</option>
+              </select>
             </div>
 
             <button
-              onClick={handleInspectDeliverable}
-              className="text-xs text-[#0084ff] hover:underline font-bold flex items-center gap-1 shrink-0 ml-3"
+              onClick={() => setIsCreateTaskModalOpen(true)}
+              className="btn-cyan-pill text-xs px-4 py-2 inline-flex items-center gap-1.5"
             >
-              <span>Inspect</span>
-              <ExternalLink size={12} />
+              <Plus size={14} />
+              <span>Create Task</span>
             </button>
           </div>
 
-          {/* User-Reported Direct Payment Details Box */}
-          {currentMilestone?.paymentDetails?.reportedAt && (
-            <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs space-y-1.5">
-              <div className="flex items-center justify-between font-semibold text-slate-900">
-                <span className="flex items-center gap-1.5 text-slate-700">
-                  <CreditCard size={14} className="text-[#0084ff]" />
-                  <span>Reported Direct Payment:</span>
-                </span>
-                <span className="capitalize">{currentMilestone.paymentDetails.paymentMethod?.replace('_', ' ')}</span>
-              </div>
-              {currentMilestone.paymentDetails.externalReference && (
-                <div className="text-[11px] text-slate-600 font-mono">
-                  UTR / Reference: <strong>{currentMilestone.paymentDetails.externalReference}</strong>
+          {tasks.length === 0 ? (
+            <div className="floxa-card py-16 text-center space-y-3">
+              <ListTodo size={32} className="mx-auto text-slate-300" />
+              <div className="text-sm font-bold text-slate-800">No Project Tasks Yet</div>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                Break milestone objectives down into actionable tasks to track team progress.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {tasks.map((task) => (
+                <div
+                  key={task._id || task.id}
+                  className="floxa-card p-4 space-y-3 hover:border-slate-300 transition-all"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleToggleTaskStatus(task)}
+                        className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${
+                          task.status === 'completed'
+                            ? 'bg-emerald-600 border-emerald-600 text-white'
+                            : 'border-slate-300 hover:border-[#0084ff]'
+                        }`}
+                      >
+                        {task.status === 'completed' && <Check size={12} />}
+                      </button>
+                      <h4
+                        className={`text-sm font-bold ${
+                          task.status === 'completed' ? 'line-through text-slate-400' : 'text-slate-900'
+                        }`}
+                      >
+                        {task.title}
+                      </h4>
+                    </div>
+
+                    <span
+                      className={`text-[9.5px] font-extrabold uppercase px-2 py-0.5 rounded-full ${
+                        task.priority === 'urgent'
+                          ? 'bg-red-100 text-red-700'
+                          : task.priority === 'high'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-slate-100 text-slate-600'
+                      }`}
+                    >
+                      {task.priority}
+                    </span>
+                  </div>
+
+                  {task.description && (
+                    <p className="text-xs text-slate-600 leading-relaxed font-normal pl-7">
+                      {task.description}
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-500 pl-7">
+                    <div className="flex items-center gap-3">
+                      {task.dueDate && (
+                        <span className="flex items-center gap-1 font-mono">
+                          <Calendar size={12} />
+                          {new Date(task.dueDate).toLocaleDateString()}
+                        </span>
+                      )}
+                      <span className="capitalize">{task.status.replace('_', ' ')}</span>
+                    </div>
+
+                    <button
+                      onClick={() =>
+                        setActiveTaskIdForComment(
+                          activeTaskIdForComment === task._id ? null : task._id
+                        )
+                      }
+                      className="text-[#0084ff] font-bold hover:underline flex items-center gap-1"
+                    >
+                      <MessageSquare size={12} />
+                      <span>{task.comments?.length || 0} Comments</span>
+                    </button>
+                  </div>
+
+                  {/* Task Comments Accordion */}
+                  {activeTaskIdForComment === task._id && (
+                    <div className="pt-2 pl-7 space-y-2 border-t border-slate-100">
+                      {(task.comments || []).map((c: any, cIdx: number) => (
+                        <div key={cIdx} className="p-2 rounded-lg bg-slate-50 text-[11px] space-y-0.5">
+                          <div className="flex items-center justify-between font-bold text-slate-800">
+                            <span>{c.userName || 'Team member'}</span>
+                            <span className="text-[9.5px] text-slate-400 font-mono">
+                              {new Date(c.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <p className="text-slate-600">{c.text}</p>
+                        </div>
+                      ))}
+
+                      <div className="flex items-center gap-2 pt-1">
+                        <input
+                          type="text"
+                          placeholder="Add comment..."
+                          value={taskCommentText}
+                          onChange={(e) => setTaskCommentText(e.target.value)}
+                          className="flex-1 text-xs p-1.5 px-2.5 rounded-lg border border-slate-200"
+                        />
+                        <button
+                          onClick={() => handleAddTaskComment(task._id)}
+                          className="btn-cyan-pill text-[11px] px-3 py-1.5"
+                        >
+                          Send
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-              {currentMilestone.paymentDetails.receiptFileUrl && (
-                <div className="pt-1">
-                  <a
-                    href={currentMilestone.paymentDetails.receiptFileUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[#0084ff] hover:underline font-medium inline-flex items-center gap-1"
-                  >
-                    <Receipt size={12} />
-                    <span>View Client Payment Receipt</span>
-                  </a>
-                </div>
-              )}
+              ))}
             </div>
           )}
+        </div>
+      )}
 
-          {/* Action Row */}
-          <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5">
-            {/* Freelancer: Submit Deliverable */}
-            {!isClient && !isDeliverableApproved && (
-              <button
-                onClick={() => setIsSubmitModalOpen(true)}
-                className="btn-dark-pill text-xs px-4 py-2.5 justify-center"
-              >
-                <Upload size={14} className="text-[#0084ff]" />
-                <span>{isDeliverableInReview ? 'Re-Submit Deliverable' : 'Submit Milestone Deliverable'}</span>
-              </button>
-            )}
+      {/* ========================================================
+          TAB 3: PROJECT DISCUSSION (CONTRACT SCOPED)
+          ======================================================== */}
+      {activeTab === 'discussion' && (
+        <div className="floxa-card p-6 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Project Workspace Channel</h3>
+              <p className="text-xs text-slate-500">Private encrypted discussion between client and specialist.</p>
+            </div>
+            <span className="text-xs font-mono text-emerald-600 font-bold flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Contract Room Active
+            </span>
+          </div>
 
-            {/* Client: Approve Deliverable */}
-            {isClient && isDeliverableInReview && !isDeliverableApproved && (
-              <button
-                onClick={handleApproveDeliverable}
-                disabled={isProcessing}
-                className="btn-cyan-pill text-xs px-5 py-2.5 justify-center"
-              >
-                <Check size={14} />
-                <span>{isProcessing ? 'Saving...' : 'Approve Deliverable'}</span>
-              </button>
-            )}
-
-            {/* Client: Record Direct Payment */}
-            {isClient && (!isPaymentReported || isPaymentDisputed) && (
-              <button
-                onClick={() => setIsPaymentModalOpen(true)}
-                className="btn-dark-pill text-xs px-4 py-2.5 justify-center"
-              >
-                <CreditCard size={14} className="text-[#0084ff]" />
-                <span>Record Direct Payment</span>
-              </button>
-            )}
-
-            {/* Freelancer: Acknowledge Direct Payment */}
-            {!isClient && isPaymentReported && !isPaymentAcknowledged && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setIsDisputeModalOpen(true)}
-                  className="px-3.5 py-2 rounded-full border border-red-200 text-red-600 hover:bg-red-50 text-xs font-semibold"
-                >
-                  Report Discrepancy
-                </button>
-                <button
-                  onClick={handleAcknowledgePayment}
-                  disabled={isProcessing}
-                  className="btn-cyan-pill text-xs px-5 py-2.5 justify-center"
-                >
-                  <Check size={14} />
-                  <span>{isProcessing ? 'Confirming...' : 'Acknowledge Payment Receipt'}</span>
-                </button>
+          <div className="h-80 overflow-y-auto space-y-3 p-3 bg-slate-50/60 rounded-2xl border border-slate-200">
+            {discussionMessages.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-xs text-slate-400">
+                Start discussion regarding milestone deliverables or technical questions.
               </div>
-            )}
-
-            {/* Both: Payment Acknowledged Badge */}
-            {isPaymentAcknowledged && (
-              <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold flex items-center gap-2">
-                <CheckCircle2 size={16} className="text-emerald-600" />
-                <span>Payment Confirmed by Parties outside platform</span>
-              </div>
+            ) : (
+              discussionMessages.map((msg: any) => {
+                const isSelf = msg.senderId?._id === currentUser?.id || msg.senderId === currentUser?.id;
+                return (
+                  <div
+                    key={msg._id || msg.id}
+                    className={`flex flex-col max-w-md ${isSelf ? 'ml-auto items-end' : 'mr-auto items-start'}`}
+                  >
+                    <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium mb-1">
+                      <span>{msg.senderId?.name || (isSelf ? 'You' : 'Counterpart')}</span>
+                      <span>•</span>
+                      <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <div
+                      className={`p-3 rounded-2xl text-xs leading-relaxed ${
+                        isSelf
+                          ? 'bg-[#0084ff] text-white rounded-br-none shadow-sm'
+                          : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none shadow-sm'
+                      }`}
+                    >
+                      {msg.text}
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
-        </div>
-      </div>
 
-      {/* Deliverable Submission Modal */}
+          <form onSubmit={handleSendDiscussion} className="flex items-center gap-2">
+            <input
+              type="text"
+              placeholder="Post a message in this contract room..."
+              value={newDiscussionText}
+              onChange={(e) => setNewDiscussionText(e.target.value)}
+              className="flex-1 p-2.5 px-4 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#0084ff]/20 bg-white"
+            />
+            <button
+              type="submit"
+              disabled={isSendingMessage || !newDiscussionText.trim()}
+              className="btn-cyan-pill text-xs px-5 py-2.5"
+            >
+              <Send size={13} />
+              <span>Send</span>
+            </button>
+          </form>
+        </div>
+      )}
+
+      {/* ========================================================
+          TAB 4: DELIVERABLES & FILES VAULT
+          ======================================================== */}
+      {activeTab === 'files' && (
+        <div className="floxa-card p-6 space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Project Files Vault</h3>
+              <p className="text-xs text-slate-500">Secure resource-level protected deliverables and handover packages.</p>
+            </div>
+            <span className="text-xs text-slate-500 font-mono font-medium">
+              {contractFiles.length} Total Files
+            </span>
+          </div>
+
+          {contractFiles.length === 0 ? (
+            <div className="py-16 text-center space-y-3">
+              <FolderArchive size={32} className="mx-auto text-slate-300" />
+              <div className="text-sm font-bold text-slate-800">No Files Uploaded Yet</div>
+              <p className="text-xs text-slate-500">
+                Files uploaded during milestone deliverable submissions will appear here.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {contractFiles.map((f, idx) => (
+                <div
+                  key={idx}
+                  className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-xl bg-[#0084ff]/10 text-[#0084ff] flex items-center justify-center shrink-0">
+                      <FileText size={18} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-slate-900 truncate">
+                        {f.filename}
+                      </div>
+                      <div className="text-[10px] text-slate-400 capitalize">
+                        Source: {f.source.replace('_', ' ')}
+                      </div>
+                    </div>
+                  </div>
+
+                  <a
+                    href={`http://localhost:5001/api/files/${encodeURIComponent(f.filename)}/download`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-[#0084ff] shrink-0"
+                    title="Secure Download"
+                  >
+                    <Download size={14} />
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================
+          TAB 5: ACTIVITY TIMELINE
+          ======================================================== */}
+      {activeTab === 'activity' && (
+        <div className="floxa-card p-6 space-y-4">
+          <div className="pb-3 border-b border-slate-100">
+            <h3 className="text-sm font-bold text-slate-900">Project Audit & Activity Log</h3>
+            <p className="text-xs text-slate-500">Chronological history of milestone submissions, reviews, and closeout actions.</p>
+          </div>
+
+          {activities.length === 0 ? (
+            <div className="py-16 text-center text-xs text-slate-400">
+              No project activities recorded yet.
+            </div>
+          ) : (
+            <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-200">
+              {activities.map((act) => (
+                <div key={act._id || act.id} className="relative space-y-1">
+                  <span className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-[#0084ff] ring-4 ring-white" />
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-slate-900">{act.title}</span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {new Date(act.createdAt).toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 leading-relaxed font-normal">{act.details}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================
+          TAB 6: PROJECT CLOSEOUT & HANDOVER
+          ======================================================== */}
+      {activeTab === 'closeout' && (
+        <div className="floxa-card p-6 space-y-6">
+          <div className="pb-4 border-b border-slate-100">
+            <h3 className="text-base font-bold text-slate-900">Project Handover & Closeout Verification</h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Formal project completion requires dual confirmation from both client and freelancer.
+            </p>
+          </div>
+
+          {/* Checklist */}
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 text-xs">
+            <span className="font-extrabold uppercase tracking-wider text-slate-700">Closeout Checklist</span>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <CheckCircle2
+                  size={15}
+                  className={closeoutChecklist?.allMilestonesApproved ? 'text-emerald-600' : 'text-slate-300'}
+                />
+                <span className={closeoutChecklist?.allMilestonesApproved ? 'text-slate-900 font-medium' : 'text-slate-500'}>
+                  All contractual milestones have been approved
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <CheckCircle2
+                  size={15}
+                  className={!closeoutChecklist?.hasUnresolvedRevisions ? 'text-emerald-600' : 'text-slate-300'}
+                />
+                <span className={!closeoutChecklist?.hasUnresolvedRevisions ? 'text-slate-900 font-medium' : 'text-slate-500'}>
+                  No outstanding revision requests remain open
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <CheckCircle2
+                  size={15}
+                  className={closeoutChecklist?.clientCloseoutConfirmed ? 'text-emerald-600' : 'text-slate-300'}
+                />
+                <span className={closeoutChecklist?.clientCloseoutConfirmed ? 'text-slate-900 font-medium' : 'text-slate-500'}>
+                  Client handover confirmation:{' '}
+                  {closeoutChecklist?.clientCloseoutConfirmed ? 'Confirmed ✓' : 'Pending'}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <CheckCircle2
+                  size={15}
+                  className={closeoutChecklist?.freelancerCloseoutConfirmed ? 'text-emerald-600' : 'text-slate-300'}
+                />
+                <span className={closeoutChecklist?.freelancerCloseoutConfirmed ? 'text-slate-900 font-medium' : 'text-slate-500'}>
+                  Freelancer work completion confirmation:{' '}
+                  {closeoutChecklist?.freelancerCloseoutConfirmed ? 'Confirmed ✓' : 'Pending'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Dual Confirmation Status */}
+          {closeoutChecklist?.isFullyClosed ? (
+            <div className="p-6 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-center space-y-2">
+              <div className="w-12 h-12 rounded-full bg-emerald-600 text-white flex items-center justify-center mx-auto shadow-lg">
+                <Check size={24} strokeWidth={3} />
+              </div>
+              <h4 className="text-base font-black text-emerald-900">Project Agreement Successfully Completed</h4>
+              <p className="text-xs text-emerald-800 max-w-md mx-auto leading-relaxed">
+                Both parties have formally confirmed final deliverable handover. All external financial arrangements have been coordinated directly.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4 pt-2">
+              <label className="block text-xs font-bold text-slate-800">
+                Confirm Handover & Leave Closeout Statement:
+              </label>
+              <textarea
+                rows={3}
+                placeholder={
+                  isClient
+                    ? 'Confirm all project source files, credentials, and documentation have been received.'
+                    : 'Confirm all required deliverables and documentation have been transferred.'
+                }
+                value={closeoutNotes}
+                onChange={(e) => setCloseoutNotes(e.target.value)}
+                className="w-full p-3 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#0084ff]/20 bg-white"
+              />
+
+              <button
+                onClick={handleConfirmCloseout}
+                disabled={isConfirmingCloseout}
+                className="btn-cyan-pill text-xs px-6 py-2.5 font-bold"
+              >
+                <CheckCircle2 size={15} />
+                <span>
+                  {isClient ? 'Confirm Client Handover' : 'Confirm Freelancer Completion'}
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================
+          MODALS FOR WORKFLOW ACTIONS
+          ======================================================== */}
+      {/* Modal: Deliverable Handover Submission */}
       {isSubmitModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-          <div className="relative w-full max-w-md rounded-2xl bg-white border border-slate-200 p-6 space-y-4 shadow-2xl">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl border border-slate-200">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="text-sm font-bold text-slate-900">
-                Submit Deliverable — Milestone {currentMilestone?.milestoneNumber}
+                Submit Milestone {currentMilestone.milestoneNumber} Deliverable
               </h3>
-              <button onClick={() => setIsSubmitModalOpen(false)} className="text-slate-400 hover:text-slate-700">
+              <button onClick={() => setIsSubmitModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X size={16} />
               </button>
             </div>
 
             <form onSubmit={handleSubmitDeliverable} className="space-y-3.5">
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
-                  Upload Deliverable File (.zip, .pdf, .png)
-                </label>
-                <div className="flex items-center gap-2">
-                  <label className="btn-dark-pill text-xs px-3 py-2 cursor-pointer inline-flex items-center gap-1.5 shrink-0">
-                    <Paperclip size={13} className="text-[#0084ff]" />
-                    <span>{isUploadingDeliverable ? 'Uploading...' : 'Choose File'}</span>
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={handleDeliverableFileUpload}
-                      disabled={isUploadingDeliverable}
-                      accept=".zip,.pdf,.png,.jpg,.jpeg,.json"
-                    />
-                  </label>
-                  <span className="text-[11px] text-slate-500 truncate max-w-[240px]">
-                    {deliverableFileName}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
-                  Deliverable Bundle Name / URL
-                </label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Package Title</label>
                 <input
                   type="text"
-                  value={deliverableFileName}
-                  onChange={(e) => setDeliverableFileName(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 outline-none focus:border-[#0084ff]"
-                  placeholder="e.g. Deliverable_Vector_Assets_v1.zip"
-                  required
+                  placeholder="e.g. Design Tokens & Typography v1"
+                  value={submissionTitle}
+                  onChange={(e) => setSubmissionTitle(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
-                  Handover Notes & Documentation
-                </label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Deliverable File</label>
+                <input
+                  type="text"
+                  value={deliverableFileName}
+                  onChange={(e) => setDeliverableFileName(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Submission Notes</label>
                 <textarea
                   rows={3}
+                  placeholder="Describe included assets, documentation links, and instructions..."
                   value={deliverableNotes}
                   onChange={(e) => setDeliverableNotes(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 outline-none focus:border-[#0084ff] resize-none"
-                  placeholder="Describe the deliverables included, vector specs, fonts, or access keys..."
-                  required
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs"
                 />
               </div>
 
@@ -604,13 +1324,12 @@ export const WorkspaceView: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsSubmitModalOpen(false)}
-                  className="px-4 py-2 rounded-full border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                  className="px-4 py-2 rounded-full border border-slate-200 text-xs font-semibold text-slate-600"
                 >
                   Cancel
                 </button>
                 <button type="submit" className="btn-cyan-pill text-xs px-5 py-2">
-                  <Send size={13} />
-                  <span>Submit for Client Review</span>
+                  Submit Deliverable
                 </button>
               </div>
             </form>
@@ -618,98 +1337,192 @@ export const WorkspaceView: React.FC = () => {
         </div>
       )}
 
-      {/* Record Direct Payment Modal (Client) */}
+      {/* Modal: Revision Request */}
+      {isRevisionModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="text-sm font-bold text-slate-900">
+                Request Changes for Milestone {currentMilestone.milestoneNumber}
+              </h3>
+              <button onClick={() => setIsRevisionModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleRequestRevision} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Required Changes & Clear Explanation:
+                </label>
+                <textarea
+                  rows={4}
+                  required
+                  placeholder="Specify exact adjustments needed before deliverable approval..."
+                  value={revisionFeedback}
+                  onChange={(e) => setRevisionFeedback(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsRevisionModalOpen(false)}
+                  className="px-4 py-2 rounded-full border border-slate-200 text-xs font-semibold text-slate-600"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="px-5 py-2 rounded-full bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs shadow-md">
+                  Send Revision Request
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Create Task */}
+      {isCreateTaskModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="text-sm font-bold text-slate-900">Create New Project Task</h3>
+              <button onClick={() => setIsCreateTaskModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateTask} className="space-y-3.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Task Title</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Audit typography tokens for contrast"
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Description (Optional)</label>
+                <textarea
+                  rows={2}
+                  placeholder="Task details and acceptance checklist..."
+                  value={newTaskDesc}
+                  onChange={(e) => setNewTaskDesc(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Priority</label>
+                  <select
+                    value={newTaskPriority}
+                    onChange={(e: any) => setNewTaskPriority(e.target.value)}
+                    className="w-full p-2 rounded-xl border border-slate-200 text-xs bg-white"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Due Date</label>
+                  <input
+                    type="date"
+                    value={newTaskDueDate}
+                    onChange={(e) => setNewTaskDueDate(e.target.value)}
+                    className="w-full p-2 rounded-xl border border-slate-200 text-xs"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateTaskModalOpen(false)}
+                  className="px-4 py-2 rounded-full border border-slate-200 text-xs font-semibold text-slate-600"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-cyan-pill text-xs px-5 py-2">
+                  Create Task
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Client Records External Payment */}
       {isPaymentModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-          <div className="relative w-full max-w-md rounded-2xl bg-white border border-slate-200 p-6 space-y-4 shadow-2xl">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl border border-slate-200">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">
-                  Record Direct Payment — Milestone {currentMilestone?.milestoneNumber}
-                </h3>
-                <p className="text-[11px] text-slate-500">
-                  Agreed Amount: <strong>${currentMilestone?.amount.toLocaleString()}</strong>
-                </p>
-              </div>
-              <button onClick={() => setIsPaymentModalOpen(false)} className="text-slate-400 hover:text-slate-700">
+              <h3 className="text-sm font-bold text-slate-900">
+                Record Direct Payment for Milestone {currentMilestone.milestoneNumber}
+              </h3>
+              <button onClick={() => setIsPaymentModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X size={16} />
               </button>
             </div>
 
             <form onSubmit={handleReportPayment} className="space-y-3.5">
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Payment Method Used</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">External Payment Method</label>
                 <select
                   value={paymentMethod}
-                  onChange={(e) => setPaymentMethod(e.target.value as any)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 outline-none focus:border-[#0084ff] bg-white"
+                  onChange={(e: any) => setPaymentMethod(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white"
                 >
-                  <option value="bank_transfer">Direct Bank Transfer (NEFT/RTGS/IMPS/Wire)</option>
-                  <option value="upi">UPI (Google Pay, PhonePe, Paytm)</option>
-                  <option value="stripe_direct">Direct Stripe Transfer</option>
+                  <option value="bank_transfer">Direct Bank Transfer (NEFT/RTGS/Wire)</option>
+                  <option value="upi">UPI (GPay, PhonePe, Paytm)</option>
+                  <option value="stripe_direct">Direct Stripe Invoice</option>
                   <option value="razorpay_direct">Direct Razorpay Link</option>
-                  <option value="paypal">Direct PayPal</option>
-                  <option value="other">Other Agreed External Method</option>
+                  <option value="paypal">PayPal</option>
+                  <option value="other">Other Mutually Agreed Method</option>
                 </select>
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
-                  External Reference / UTR Number
-                </label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">UTR / External Reference ID</label>
                 <input
                   type="text"
+                  required
+                  placeholder="e.g. UTR-20261114-88492"
                   value={externalReference}
                   onChange={(e) => setExternalReference(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 outline-none focus:border-[#0084ff]"
-                  placeholder="e.g. UTR-20261114-9842187 or Stripe txn ID"
-                  required
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs font-mono"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
-                  Upload Payment Receipt / Screenshot (Optional)
-                </label>
-                <div className="flex items-center gap-2">
-                  <label className="btn-dark-pill text-xs px-3 py-2 cursor-pointer inline-flex items-center gap-1.5 shrink-0">
-                    <Paperclip size={13} className="text-[#0084ff]" />
-                    <span>{isUploadingReceipt ? 'Uploading...' : 'Choose Receipt'}</span>
-                    <input
-                      type="file"
-                      className="hidden"
-                      onChange={handleReceiptFileUpload}
-                      disabled={isUploadingReceipt}
-                      accept="image/*,.pdf"
-                    />
-                  </label>
-                  <span className="text-[11px] text-slate-500 truncate max-w-[220px]">
-                    {receiptFileUrl ? 'Receipt attached ✓' : 'No receipt attached'}
-                  </span>
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Notes</label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Payment Notes (Optional)</label>
                 <textarea
                   rows={2}
+                  placeholder="Notes for the freelancer..."
                   value={paymentNotes}
                   onChange={(e) => setPaymentNotes(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 outline-none focus:border-[#0084ff] resize-none"
-                  placeholder="Add any additional bank or transfer notes..."
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsPaymentModalOpen(false)}
-                  className="px-4 py-2 rounded-full border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                  className="px-4 py-2 rounded-full border border-slate-200 text-xs font-semibold text-slate-600"
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn-cyan-pill text-xs px-5 py-2">
-                  <span>Record Payment</span>
+                <button type="submit" disabled={isProcessing} className="btn-cyan-pill text-xs px-5 py-2">
+                  Confirm Payment Record
                 </button>
               </div>
             </form>
@@ -717,48 +1530,40 @@ export const WorkspaceView: React.FC = () => {
         </div>
       )}
 
-      {/* Dispute Modal */}
+      {/* Modal: Dispute Payment */}
       {isDisputeModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
-          <div className="relative w-full max-w-md rounded-2xl bg-white border border-slate-200 p-6 space-y-4 shadow-2xl">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 shadow-2xl border border-slate-200">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5 text-red-600">
-                <AlertTriangle size={16} />
-                <span>Report Payment Discrepancy</span>
-              </h3>
-              <button onClick={() => setIsDisputeModalOpen(false)} className="text-slate-400 hover:text-slate-700">
+              <h3 className="text-sm font-bold text-red-600">Dispute Payment Record</h3>
+              <button onClick={() => setIsDisputeModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleDisputePaymentSubmit} className="space-y-3.5">
+            <form onSubmit={handleDisputePayment} className="space-y-3.5">
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">
-                  Reason for Discrepancy
-                </label>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Dispute Explanation</label>
                 <textarea
                   rows={3}
+                  required
+                  placeholder="Explain why this payment record does not match received funds in your account..."
                   value={disputeReason}
                   onChange={(e) => setDisputeReason(e.target.value)}
-                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 outline-none focus:border-red-500 resize-none"
-                  placeholder="Explain why the reported payment was not received or if the amount differs..."
-                  required
+                  className="w-full p-2.5 rounded-xl border border-slate-200 text-xs"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsDisputeModalOpen(false)}
-                  className="px-4 py-2 rounded-full border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                  className="px-4 py-2 rounded-full border border-slate-200 text-xs font-semibold text-slate-600"
                 >
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-full bg-red-600 text-white font-bold text-xs hover:bg-red-700"
-                >
-                  Submit Discrepancy
+                <button type="submit" className="px-5 py-2 rounded-full bg-red-600 hover:bg-red-500 text-white font-bold text-xs shadow-md">
+                  Submit Dispute
                 </button>
               </div>
             </form>

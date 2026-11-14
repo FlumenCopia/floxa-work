@@ -18,6 +18,16 @@ export interface IContract {
   proposalSnapshot?: Record<string, any>;
   floxaDesignWorkspaceLinked: boolean;
   floxaDesignProjectId?: string;
+  closeoutStatus?: 'open' | 'in_review' | 'completed' | 'cancelled';
+  clientCloseoutConfirmed?: boolean;
+  clientCloseoutConfirmedAt?: Date;
+  clientCloseoutNotes?: string;
+  freelancerCloseoutConfirmed?: boolean;
+  freelancerCloseoutConfirmedAt?: Date;
+  freelancerCloseoutNotes?: string;
+  startDate?: Date;
+  targetCompletionDate?: Date;
+  actualCompletionDate?: Date;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -42,6 +52,21 @@ const contractSchema = new Schema<IContract>(
     proposalSnapshot: { type: Schema.Types.Mixed, default: null },
     floxaDesignWorkspaceLinked: { type: Boolean, default: false },
     floxaDesignProjectId: { type: String, default: '' },
+    closeoutStatus: {
+      type: String,
+      enum: ['open', 'in_review', 'completed', 'cancelled'],
+      default: 'open',
+      index: true,
+    },
+    clientCloseoutConfirmed: { type: Boolean, default: false },
+    clientCloseoutConfirmedAt: { type: Date, default: null },
+    clientCloseoutNotes: { type: String, default: '' },
+    freelancerCloseoutConfirmed: { type: Boolean, default: false },
+    freelancerCloseoutConfirmedAt: { type: Date, default: null },
+    freelancerCloseoutNotes: { type: String, default: '' },
+    startDate: { type: Date, default: Date.now },
+    targetCompletionDate: { type: Date, default: null },
+    actualCompletionDate: { type: Date, default: null },
   },
   {
     collection: 'contracts',

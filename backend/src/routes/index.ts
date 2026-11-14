@@ -51,6 +51,8 @@ import {
   acceptProposalAndCreateContract,
   submitMilestoneDeliverable,
   approveMilestoneDeliverable,
+  requestMilestoneRevision,
+  getMilestoneSubmissions,
   reportMilestonePayment,
   acknowledgeMilestonePayment,
   disputeMilestonePayment,
@@ -58,6 +60,21 @@ import {
   getMyContracts,
   getContractDetails,
 } from '../controllers/contract.controller.js';
+import {
+  getWorkspaceDetails,
+  getContractTasks,
+  createContractTask,
+  updateTask,
+  addTaskComment,
+  getContractActivity,
+  getContractFiles,
+  confirmCloseout,
+  getContractMessages,
+  sendContractMessage,
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
+} from '../controllers/workspace.controller.js';
 import { getUserProfile, updateUserProfile } from '../controllers/user.controller.js';
 import { getMessages, sendMessage } from '../controllers/chat.controller.js';
 import {
@@ -153,10 +170,32 @@ router.get('/contracts/active', requireAuth, getActiveContract);
 router.get('/contracts/me', requireAuth, getMyContracts);
 router.get('/contracts/:contractId', requireAuth, getContractDetails);
 router.post('/milestones/:milestoneId/deliverable', requireAuth, submitMilestoneDeliverable);
+router.post('/milestones/:milestoneId/submissions', requireAuth, submitMilestoneDeliverable);
+router.get('/milestones/:milestoneId/submissions', requireAuth, getMilestoneSubmissions);
+router.post('/milestones/:milestoneId/revisions', requireAuth, requestMilestoneRevision);
 router.post('/milestones/:milestoneId/approve', requireAuth, approveMilestoneDeliverable);
 router.post('/milestones/:milestoneId/payment/report', requireAuth, reportMilestonePayment);
 router.post('/milestones/:milestoneId/payment/acknowledge', requireAuth, acknowledgeMilestonePayment);
 router.post('/milestones/:milestoneId/payment/dispute', requireAuth, disputeMilestonePayment);
+
+// Phase 10: Project Workspace, Task Management & Activity Timeline
+router.get('/contracts/:contractId/workspace', requireAuth, getWorkspaceDetails);
+router.get('/contracts/:contractId/tasks', requireAuth, getContractTasks);
+router.post('/contracts/:contractId/tasks', requireAuth, createContractTask);
+router.patch('/tasks/:taskId', requireAuth, updateTask);
+router.put('/tasks/:taskId', requireAuth, updateTask);
+router.post('/tasks/:taskId/comments', requireAuth, addTaskComment);
+router.get('/contracts/:contractId/activity', requireAuth, getContractActivity);
+router.get('/contracts/:contractId/files', requireAuth, getContractFiles);
+router.post('/contracts/:contractId/closeout', requireAuth, confirmCloseout);
+router.get('/contracts/:contractId/messages', requireAuth, getContractMessages);
+router.post('/contracts/:contractId/messages', requireAuth, sendContractMessage);
+
+// Phase 10: User & Project Notifications
+router.get('/notifications', requireAuth, getNotifications);
+router.patch('/notifications/:notificationId/read', requireAuth, markNotificationRead);
+router.post('/notifications/:notificationId/read', requireAuth, markNotificationRead);
+router.post('/notifications/read-all', requireAuth, markAllNotificationsRead);
 
 // Centralized File Storage (Upload, Download, Inline View)
 router.post('/files/upload', requireAuth, uploadMiddleware.single('file'), uploadSingleFile);

@@ -45,3 +45,4 @@ The calculated composite score maps directly to descriptive fit tiers:
 ## 4. Human-Readable Explanation Engine
 Rather than presenting raw percentages in isolation, the matching engine generates transparent factual rationales, such as:
 > *"Strong match based on 4 matching skills (Figma, UI/UX, Design Systems, React); verified specialization in UI/UX; 1 portfolio case study in matching problem domain; minimum project budget aligns with $3,000-$5,000 scope; available for immediate onboarding."*
+

@@ -47,3 +47,4 @@ zero custody terms must be agreed).
 1. **Ownership Enforcement:** A client can only send invitations for project briefs they explicitly created. Attempting to invite a freelancer to another client's brief immediately aborts with `403 Forbidden`.
 2. **Duplicate Protection:** Unique compound index `{ briefId: 1, freelancerId: 1 }` prevents invitation spam.
 3. **No Contract Bypassing:** Accepting an invitation **never** creates a binding contract, releases funds, or bypasses the Mini-Discovery proposal process. It initiates an informed dialogue where the specialist reviews the diagnostic problem and submits their milestone plan.
+

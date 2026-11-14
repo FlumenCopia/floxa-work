@@ -7,6 +7,7 @@ import { FileRecord } from '../models/File.model.js';
 import { Contract } from '../models/Contract.model.js';
 import { Milestone } from '../models/Milestone.model.js';
 import { PaymentRecord } from '../models/PaymentRecord.model.js';
+import { Task } from '../models/Task.model.js';
 import { AuditLog } from '../models/AuditLog.model.js';
 
 const UPLOAD_DIR = path.resolve(process.cwd(), 'media', 'uploads');
@@ -196,6 +197,22 @@ export async function downloadFile(
               relevantPayment.payeeId.toString() === req.user.id.toString())
           ) {
             isContractParticipant = true;
+          }
+        }
+
+        if (!isContractParticipant) {
+          const relevantTask = await Task.findOne({
+            attachments: { $in: [fileDoc.filename, fileDoc.accessUrl] },
+          });
+          if (relevantTask) {
+            const contract = await Contract.findById(relevantTask.contractId);
+            if (
+              contract &&
+              (contract.clientId.toString() === req.user.id.toString() ||
+                contract.freelancerId.toString() === req.user.id.toString())
+            ) {
+              isContractParticipant = true;
+            }
           }
         }
       }

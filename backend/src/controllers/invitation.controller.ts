@@ -207,3 +207,4 @@ export async function cancelInvitation(req: AuthenticatedRequest, res: Response)
     res.status(500).json({ error: error.message || 'Failed to cancel invitation' });
   }
 }
+

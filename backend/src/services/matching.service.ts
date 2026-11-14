@@ -293,3 +293,4 @@ export function calculateCompatibility(brief: any, talent: any): MatchResult {
     },
   };
 }
+

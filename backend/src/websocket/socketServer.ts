@@ -1,7 +1,9 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { Server, IncomingMessage } from 'http';
 import jwt from 'jsonwebtoken';
+import mongoose from 'mongoose';
 import { ENV } from '../config/env.js';
+import { Contract } from '../models/Contract.model.js';
 
 interface ClientSocket extends WebSocket {
   userId?: string;
@@ -111,12 +113,55 @@ export function initWebSocketServer(server: Server): WebSocketServer {
 
           case 'join_room':
           case 'presence':
-            ws.room = message.room || 'project_general';
-            ws.userId = message.userId || ws.userId;
-            ws.userName = message.userName || message.name || ws.userName;
-            ws.userRole = message.userRole || message.role || ws.userRole;
-            ws.userAvatar = message.userAvatar || message.avatarUrl || ws.userAvatar;
-            broadcastOnlineUsers();
+            (async () => {
+              const requestedRoom = message.room || 'project_general';
+              const effectiveUserId = ws.userId || message.userId;
+
+              if (requestedRoom.startsWith('contract:') || requestedRoom.startsWith('workspace:')) {
+                const targetContractId = requestedRoom.split(':')[1];
+                if (!targetContractId || !mongoose.Types.ObjectId.isValid(targetContractId)) {
+                  ws.send(JSON.stringify({ type: 'room_join_error', room: requestedRoom, error: 'Invalid contract ID' }));
+                  return;
+                }
+
+                if (!effectiveUserId) {
+                  ws.send(JSON.stringify({ type: 'room_join_error', room: requestedRoom, error: 'Authentication required' }));
+                  return;
+                }
+
+                try {
+                  const contract = await Contract.findById(targetContractId);
+                  if (!contract) {
+                    ws.send(JSON.stringify({ type: 'room_join_error', room: requestedRoom, error: 'Contract not found' }));
+                    return;
+                  }
+
+                  const isClient = contract.clientId.toString() === effectiveUserId.toString();
+                  const isFreelancer = contract.freelancerId.toString() === effectiveUserId.toString();
+                  const isAdmin = ws.userRole === 'admin';
+
+                  if (!isClient && !isFreelancer && !isAdmin) {
+                    ws.send(JSON.stringify({
+                      type: 'room_join_error',
+                      room: requestedRoom,
+                      error: 'Access denied: You are not an authorized participant in this project workspace.',
+                    }));
+                    return;
+                  }
+                } catch (e) {
+                  ws.send(JSON.stringify({ type: 'room_join_error', room: requestedRoom, error: 'Verification failed' }));
+                  return;
+                }
+              }
+
+              ws.room = requestedRoom;
+              ws.userId = effectiveUserId;
+              ws.userName = message.userName || message.name || ws.userName;
+              ws.userRole = message.userRole || message.role || ws.userRole;
+              ws.userAvatar = message.userAvatar || message.avatarUrl || ws.userAvatar;
+              ws.send(JSON.stringify({ type: 'room_joined', room: ws.room }));
+              broadcastOnlineUsers();
+            })();
             break;
 
           case 'chat_message':

@@ -12,4 +12,7 @@ export * from './Session.model.js';
 export * from './AuditLog.model.js';
 export * from './SavedItem.model.js';
 export * from './Invitation.model.js';
+export * from './Task.model.js';
+export * from './ContractActivity.model.js';
+export * from './Notification.model.js';
 

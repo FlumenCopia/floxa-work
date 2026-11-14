@@ -7,6 +7,8 @@ import { Brief } from '../models/Brief.model.js';
 import { TalentProfile } from '../models/TalentProfile.model.js';
 import { PaymentRecord } from '../models/PaymentRecord.model.js';
 import { AuditLog } from '../models/AuditLog.model.js';
+import { ContractActivity } from '../models/ContractActivity.model.js';
+import { Notification } from '../models/Notification.model.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { broadcastSystemNotification } from '../websocket/socketServer.js';
 
@@ -193,16 +195,42 @@ export async function submitMilestoneDeliverable(
       return;
     }
 
+    const nextVersion = (milestone.submissions?.length || 0) + 1;
+    const submissionTitle = req.body.title || `Deliverable Submission v${nextVersion}`;
+
     milestone.submissions.push({
+      version: nextVersion,
+      title: submissionTitle,
       fileUrls: fileUrls && fileUrls.length > 0 ? fileUrls : ['Deliverable_Handover_Bundle.zip'],
       notes: notes || 'Deliverable source assets and vector package uploaded for client review.',
+      submittedBy: req.user.id,
       submittedAt: new Date(),
+      reviewStatus: 'pending',
     });
 
     milestone.deliverableStatus = 'in_review';
     milestone.escrowState = 'in_review';
     milestone.reviewDeadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
     await milestone.save();
+
+    await ContractActivity.create({
+      contractId: contract._id,
+      actorId: req.user.id,
+      action: 'DELIVERABLE_SUBMITTED',
+      title: `Deliverable Submitted: Milestone ${milestone.milestoneNumber} (v${nextVersion})`,
+      details: `${req.user.name || 'Freelancer'} submitted deliverable package v${nextVersion} for review.`,
+      metadata: { milestoneId: milestone._id, version: nextVersion },
+    });
+
+    await Notification.create({
+      userId: contract.clientId,
+      senderId: req.user.id,
+      contractId: contract._id,
+      type: 'deliverable',
+      title: `Deliverable Submitted: Milestone ${milestone.milestoneNumber}`,
+      message: `${req.user.name || 'Freelancer'} uploaded deliverable v${nextVersion} for your review.`,
+      linkUrl: `/workspace?contractId=${contract._id}&milestone=${milestone.milestoneNumber}`,
+    });
 
     const ipAddress = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
     const userAgent = req.headers['user-agent'] || 'Unknown';
@@ -270,6 +298,14 @@ export async function approveMilestoneDeliverable(
     milestone.deliverableStatus = 'approved';
     milestone.escrowState = 'released'; // backwards compatibility
     milestone.approvedAt = new Date();
+    milestone.approvedBy = req.user.id;
+
+    if (milestone.submissions && milestone.submissions.length > 0) {
+      const lastSub = milestone.submissions[milestone.submissions.length - 1];
+      lastSub.reviewStatus = 'approved';
+      lastSub.reviewedBy = req.user.id;
+      lastSub.reviewedAt = new Date();
+    }
     await milestone.save();
 
     // Check if all milestones are approved
@@ -294,6 +330,25 @@ export async function approveMilestoneDeliverable(
       metadata: { contractId: contract.id, milestoneNumber: milestone.milestoneNumber, allApproved },
     });
 
+    await ContractActivity.create({
+      contractId: contract._id,
+      actorId: req.user.id,
+      action: 'DELIVERABLE_APPROVED',
+      title: `Deliverable Approved: Milestone ${milestone.milestoneNumber}`,
+      details: `${req.user.name || 'Client'} approved Milestone ${milestone.milestoneNumber} deliverable.`,
+      metadata: { milestoneId: milestone._id, amount: milestone.amount },
+    });
+
+    await Notification.create({
+      userId: contract.freelancerId,
+      senderId: req.user.id,
+      contractId: contract._id,
+      type: 'deliverable',
+      title: `Milestone ${milestone.milestoneNumber} Deliverable Approved!`,
+      message: `${req.user.name || 'Client'} approved your milestone deliverable. Direct external payment can now be settled.`,
+      linkUrl: `/workspace?contractId=${contract._id}&milestone=${milestone.milestoneNumber}`,
+    });
+
     broadcastSystemNotification({
       title: 'Deliverable Approved',
       message: `${req.user.name || 'Client'} approved Milestone ${milestone.milestoneNumber} ($${milestone.amount.toLocaleString()}) deliverable! Direct payment can now be settled.`,
@@ -314,6 +369,137 @@ export async function approveMilestoneDeliverable(
 
 // Backwards-compatible alias for existing frontend callers
 export const approveMilestoneAndReleaseEscrow = approveMilestoneDeliverable;
+
+export async function requestMilestoneRevision(
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const { milestoneId } = req.params;
+    const { feedback } = req.body;
+
+    if (!feedback || !feedback.trim()) {
+      res.status(400).json({ error: 'Clear revision feedback explanation is required.' });
+      return;
+    }
+
+    const milestone = await Milestone.findById(milestoneId);
+    if (!milestone) {
+      res.status(404).json({ error: 'Milestone not found' });
+      return;
+    }
+
+    const contract = await Contract.findById(milestone.contractId);
+    if (!contract) {
+      res.status(404).json({ error: 'Associated contract not found' });
+      return;
+    }
+
+    // STRICT AUTHORIZATION: Only the contract client (or admin) can request revisions
+    if (contract.clientId.toString() !== req.user.id.toString() && req.user.role !== 'admin') {
+      res.status(403).json({ error: 'Only the project client can request milestone revisions.' });
+      return;
+    }
+
+    const currentVersion = milestone.submissions?.length || 1;
+    if (milestone.submissions && milestone.submissions.length > 0) {
+      const lastSub = milestone.submissions[milestone.submissions.length - 1];
+      lastSub.reviewStatus = 'revision_requested';
+      lastSub.reviewFeedback = feedback.trim();
+      lastSub.reviewedBy = req.user.id;
+      lastSub.reviewedAt = new Date();
+    }
+
+    milestone.revisionRequests.push({
+      feedback: feedback.trim(),
+      requestedBy: req.user.id,
+      requestedAt: new Date(),
+      submissionVersion: currentVersion,
+    });
+
+    milestone.deliverableStatus = 'revision_requested';
+    await milestone.save();
+
+    await ContractActivity.create({
+      contractId: contract._id,
+      actorId: req.user.id,
+      action: 'REVISION_REQUESTED',
+      title: `Revision Requested: Milestone ${milestone.milestoneNumber}`,
+      details: `${req.user.name || 'Client'} requested changes: "${feedback.trim().slice(0, 80)}..."`,
+      metadata: { milestoneId: milestone._id, version: currentVersion },
+    });
+
+    await Notification.create({
+      userId: contract.freelancerId,
+      senderId: req.user.id,
+      contractId: contract._id,
+      type: 'revision',
+      title: `Revision Requested: Milestone ${milestone.milestoneNumber}`,
+      message: `${req.user.name || 'Client'} requested revisions with specific feedback.`,
+      linkUrl: `/workspace?contractId=${contract._id}&milestone=${milestone.milestoneNumber}`,
+    });
+
+    broadcastSystemNotification({
+      title: 'Revision Requested',
+      message: `${req.user.name || 'Client'} requested changes for Milestone ${milestone.milestoneNumber}.`,
+      senderName: req.user.name || 'Client',
+      type: 'revision',
+      tab: 'workspace',
+    });
+
+    res.json({ message: 'Revision requested with feedback recorded', milestone });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to request revision' });
+  }
+}
+
+export async function getMilestoneSubmissions(
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const { milestoneId } = req.params;
+    const milestone = await Milestone.findById(milestoneId);
+    if (!milestone) {
+      res.status(404).json({ error: 'Milestone not found' });
+      return;
+    }
+
+    const contract = await Contract.findById(milestone.contractId);
+    if (!contract) {
+      res.status(404).json({ error: 'Associated contract not found' });
+      return;
+    }
+
+    const isClient = contract.clientId.toString() === req.user.id.toString();
+    const isFreelancer = contract.freelancerId.toString() === req.user.id.toString();
+    const isAdmin = req.user.role === 'admin';
+
+    if (!isClient && !isFreelancer && !isAdmin) {
+      res.status(403).json({ error: 'Access denied: You do not participate in this project contract.' });
+      return;
+    }
+
+    res.json({
+      submissions: milestone.submissions || [],
+      revisionRequests: milestone.revisionRequests || [],
+      milestoneId: milestone._id,
+      deliverableStatus: milestone.deliverableStatus,
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Failed to fetch milestone submissions' });
+  }
+}
 
 export async function reportMilestonePayment(
   req: AuthenticatedRequest,

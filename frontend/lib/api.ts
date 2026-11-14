@@ -599,7 +599,10 @@ export async function disputeMilestonePayment(milestoneId: string, reason: strin
   return data;
 }
 
-export async function submitMilestoneDeliverable(milestoneId: string, payload: { fileUrls?: string[]; notes?: string }) {
+export async function submitMilestoneDeliverable(
+  milestoneId: string,
+  payload: { fileUrls?: string[]; notes?: string; title?: string }
+) {
   const token = getAuthToken();
   const res = await fetch(`${API_BASE}/milestones/${milestoneId}/deliverable`, {
     method: 'POST',
@@ -915,5 +918,204 @@ export async function cancelInvitationApi(id: string) {
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed to cancel invitation');
   return data;
+}
+
+// =========================================================================
+// PHASE 10: PROJECT COLLABORATION WORKSPACE & MILESTONE EXECUTION
+// =========================================================================
+
+export async function fetchWorkspaceDetailsApi(contractId: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/contracts/${contractId}/workspace`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch project workspace');
+  return data.workspace;
+}
+
+export async function fetchContractTasksApi(contractId: string, queryParams: Record<string, any> = {}) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const params = new URLSearchParams();
+  Object.entries(queryParams).forEach(([k, v]) => {
+    if (v !== undefined && v !== null && v !== '') params.append(k, String(v));
+  });
+  const res = await fetch(`${API_BASE}/contracts/${contractId}/tasks?${params.toString()}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch tasks');
+  return data.tasks || [];
+}
+
+export async function createContractTaskApi(contractId: string, taskData: any) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/contracts/${contractId}/tasks`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(taskData),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to create task');
+  return data.task;
+}
+
+export async function updateTaskApi(taskId: string, updateData: any) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/tasks/${taskId}`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(updateData),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to update task');
+  return data.task;
+}
+
+export async function addTaskCommentApi(taskId: string, text: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/tasks/${taskId}/comments`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ text }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to add comment');
+  return data.task;
+}
+
+export async function fetchContractActivityApi(contractId: string, page = 1) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/contracts/${contractId}/activity?page=${page}&limit=25`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch activity');
+  return data;
+}
+
+export async function fetchContractFilesApi(contractId: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/contracts/${contractId}/files`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch contract files');
+  return data.files || [];
+}
+
+export async function requestMilestoneRevisionApi(milestoneId: string, feedback: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/milestones/${milestoneId}/revisions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ feedback }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to request revision');
+  return data.milestone;
+}
+
+export async function fetchMilestoneSubmissionsApi(milestoneId: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/milestones/${milestoneId}/submissions`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch submissions');
+  return data;
+}
+
+export async function confirmProjectCloseoutApi(contractId: string, notes?: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/contracts/${contractId}/closeout`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ notes }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to confirm closeout');
+  return data;
+}
+
+export async function fetchContractMessagesApi(contractId: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/contracts/${contractId}/messages`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch contract messages');
+  return data.messages || [];
+}
+
+export async function sendContractMessageApi(contractId: string, text: string, attachments: string[] = []) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/contracts/${contractId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ text, attachments }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to send contract message');
+  return data.message;
+}
+
+export async function fetchNotificationsApi() {
+  const token = getAuthToken();
+  if (!token) return { notifications: [], unreadCount: 0 };
+  const res = await fetch(`${API_BASE}/notifications`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) return { notifications: [], unreadCount: 0 };
+  return data;
+}
+
+export async function markNotificationReadApi(id: string) {
+  const token = getAuthToken();
+  if (!token) return;
+  await fetch(`${API_BASE}/notifications/${id}/read`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
+export async function markAllNotificationsReadApi() {
+  const token = getAuthToken();
+  if (!token) return;
+  await fetch(`${API_BASE}/notifications/read-all`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
 }
 
