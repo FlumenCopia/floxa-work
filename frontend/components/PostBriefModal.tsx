@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, CheckCircle2 } from 'lucide-react';
+import { X, CheckCircle2, ShieldCheck, ArrowRight, ArrowLeft } from 'lucide-react';
 import { createBrief } from '@/lib/api';
 
 interface PostBriefModalProps {
@@ -21,8 +21,14 @@ export const PostBriefModal: React.FC<PostBriefModalProps> = ({ onClose, onPostS
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isStep1Valid = title.trim().length >= 5 && problemStatement.trim().length >= 20;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (budgetMax < budgetMin) {
+      setError('Maximum budget must be greater than or equal to minimum budget.');
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
 
@@ -33,9 +39,9 @@ export const PostBriefModal: React.FC<PostBriefModalProps> = ({ onClose, onPostS
         .filter(Boolean);
 
       await createBrief({
-        title,
+        title: title.trim(),
         category,
-        problemStatement,
+        problemStatement: problemStatement.trim(),
         deliverablesRequired: delivList.length > 0 ? delivList : ['Core Deliverable'],
         budgetMin: Number(budgetMin),
         budgetMax: Number(budgetMax),
@@ -51,51 +57,79 @@ export const PostBriefModal: React.FC<PostBriefModalProps> = ({ onClose, onPostS
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 backdrop-blur-md overflow-y-auto">
-      <div className="relative w-full max-w-lg my-auto sm:my-8 rounded-2xl border border-white/90 bg-[rgba(255,255,255,0.96)] p-4 sm:p-6 shadow-[0_24px_70px_rgba(0,132,255,0.18)] text-slate-800 space-y-4 max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/50 backdrop-blur-md overflow-y-auto">
+      <div className="relative w-full max-w-lg my-auto sm:my-8 rounded-3xl border border-white/90 bg-white/95 p-5 sm:p-6 shadow-2xl text-slate-800 space-y-4 max-h-[92vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-100">
           <div>
-            <div className="text-xs text-[#0084ff] font-bold tracking-wider uppercase">
-              Post Guided Discovery Brief
+            <div className="text-[11px] text-[#0084ff] font-extrabold tracking-widest uppercase">
+              Guided Discovery Brief
             </div>
-            <p className="text-xs text-slate-500 font-medium">Step {step} of 3</p>
+            <h3 className="text-sm sm:text-base font-extrabold text-slate-900">
+              {step === 1 && '1. Project Scope & Diagnostic Problem'}
+              {step === 2 && '2. Strategic Alignment & Deliverables'}
+              {step === 3 && '3. Milestone Budget & Guidelines'}
+            </h3>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full border border-slate-200 bg-slate-50 text-slate-500 hover:text-slate-900"
+            className="p-1.5 rounded-full border border-slate-200 bg-slate-50 text-slate-400 hover:text-slate-800 transition-colors"
+            aria-label="Close modal"
           >
             <X size={16} />
           </button>
         </div>
 
+        {/* Step Progress Bar */}
+        <div className="grid grid-cols-3 gap-2">
+          {[1, 2, 3].map((s) => (
+            <div key={s} className="space-y-1">
+              <div
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  step >= s ? 'bg-[#0084ff]' : 'bg-slate-200'
+                }`}
+              />
+              <div className="text-[10px] text-slate-400 font-semibold text-center hidden sm:block">
+                {s === 1 ? 'Scope' : s === 2 ? 'Alignment' : 'Budget'}
+              </div>
+            </div>
+          ))}
+        </div>
+
         {error && (
-          <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-medium">
+          <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 pt-1">
           {step === 1 && (
-            <div className="space-y-3">
+            <div className="space-y-3.5">
               <div>
-                <label className="text-xs text-slate-600 font-medium block mb-1">Project Title</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-slate-700 font-bold block">Project Title</label>
+                  <span className="text-[10.5px] text-slate-400 font-mono">{title.length}/100</span>
+                </div>
                 <input
                   type="text"
                   required
+                  maxLength={100}
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Modern Brand Identity for AI SaaS"
-                  className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#0084ff] outline-none text-slate-900 shadow-sm"
+                  placeholder="e.g. Modern Brand Identity & Design System for AI SaaS"
+                  className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#0084ff] focus:bg-white outline-none text-slate-900 shadow-2xs transition-all"
                 />
+                {title.length > 0 && title.length < 5 && (
+                  <span className="text-[10px] text-amber-600 font-medium">Title must be at least 5 characters.</span>
+                )}
               </div>
 
               <div>
-                <label className="text-xs text-slate-600 font-medium block mb-1">Category</label>
+                <label className="text-xs text-slate-700 font-bold block mb-1">Category</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#0084ff] outline-none text-slate-900 shadow-sm"
+                  className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#0084ff] focus:bg-white outline-none text-slate-900 shadow-2xs font-medium transition-all"
                 >
                   <option value="branding">Brand & Visual Identity</option>
                   <option value="uiux">UI/UX & Product Design</option>
@@ -105,33 +139,38 @@ export const PostBriefModal: React.FC<PostBriefModalProps> = ({ onClose, onPostS
               </div>
 
               <div>
-                <label className="text-xs text-slate-600 font-medium block mb-1">
-                  Core Business Problem to Solve
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs text-slate-700 font-bold block">
+                    Core Business Problem to Solve
+                  </label>
+                  <span className="text-[10.5px] text-slate-400 font-mono">{problemStatement.length}/1000</span>
+                </div>
                 <textarea
                   required
                   rows={4}
+                  maxLength={1000}
                   value={problemStatement}
                   onChange={(e) => setProblemStatement(e.target.value)}
-                  placeholder="Explain the actual problem, target audience, and business context..."
-                  className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#0084ff] outline-none text-slate-900 leading-relaxed resize-none shadow-sm"
+                  placeholder="Explain the actual problem, audience pain points, technical goals, and business context so freelancers can provide real strategic diagnoses..."
+                  className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#0084ff] focus:bg-white outline-none text-slate-900 leading-relaxed resize-none shadow-2xs transition-all"
                 />
+                {problemStatement.length > 0 && problemStatement.length < 20 && (
+                  <span className="text-[10px] text-amber-600 font-medium">Please provide at least 20 characters describing the problem.</span>
+                )}
               </div>
 
               <div className="flex justify-end pt-2">
                 <button
                   type="button"
+                  disabled={!isStep1Valid}
                   onClick={() => {
-                    if (!title || !problemStatement) {
-                      setError('Please enter a title and problem description.');
-                      return;
-                    }
                     setError(null);
                     setStep(2);
                   }}
-                  className="btn-cyan-pill text-xs px-5 py-2"
+                  className="btn-cyan-pill text-xs px-5 py-2.5 flex items-center gap-1.5 shadow-xs disabled:opacity-40"
                 >
-                  Continue to Alignment Sliders
+                  <span>Continue to Alignment</span>
+                  <ArrowRight size={13} />
                 </button>
               </div>
             </div>
@@ -139,10 +178,10 @@ export const PostBriefModal: React.FC<PostBriefModalProps> = ({ onClose, onPostS
 
           {step === 2 && (
             <div className="space-y-4">
-              <div className="space-y-2">
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-600 font-medium">Speed / MVP</span>
-                  <span className="text-[#0084ff] font-bold font-mono">{speedCraftValue}% High Craft</span>
+                  <span className="text-slate-700 font-bold">Speed / MVP vs. High Craft</span>
+                  <span className="text-[#0084ff] font-extrabold font-mono">{speedCraftValue}% High Craft</span>
                 </div>
                 <input
                   type="range"
@@ -152,15 +191,22 @@ export const PostBriefModal: React.FC<PostBriefModalProps> = ({ onClose, onPostS
                   onChange={(e) => setSpeedCraftValue(Number(e.target.value))}
                   className="w-full accent-[#0084ff]"
                 />
+                <div className="flex justify-between text-[10px] text-slate-400 font-medium">
+                  <span>Fast Delivery / Lean MVP</span>
+                  <span>Institutional High Polish</span>
+                </div>
               </div>
 
               <div>
-                <label className="text-xs text-slate-600 font-medium block mb-1">Required Deliverables (comma-separated)</label>
+                <label className="text-xs text-slate-700 font-bold block mb-1">
+                  Required Deliverables (comma-separated)
+                </label>
                 <input
                   type="text"
                   value={deliverables}
                   onChange={(e) => setDeliverables(e.target.value)}
-                  className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#0084ff] outline-none text-slate-900 shadow-sm"
+                  placeholder="e.g. Design System, User Flows, Prototype"
+                  className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#0084ff] focus:bg-white outline-none text-slate-900 shadow-2xs transition-all"
                 />
               </div>
 
@@ -168,16 +214,18 @@ export const PostBriefModal: React.FC<PostBriefModalProps> = ({ onClose, onPostS
                 <button
                   type="button"
                   onClick={() => setStep(1)}
-                  className="btn-dark-pill text-xs px-4 py-2"
+                  className="btn-dark-pill text-xs px-4 py-2 flex items-center gap-1.5"
                 >
-                  Back
+                  <ArrowLeft size={13} />
+                  <span>Back</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setStep(3)}
-                  className="btn-cyan-pill text-xs px-5 py-2"
+                  className="btn-cyan-pill text-xs px-5 py-2 flex items-center gap-1.5"
                 >
-                  Set Milestone Budget
+                  <span>Set Milestone Budget</span>
+                  <ArrowRight size={13} />
                 </button>
               </div>
             </div>
@@ -187,32 +235,40 @@ export const PostBriefModal: React.FC<PostBriefModalProps> = ({ onClose, onPostS
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-slate-600 font-medium block mb-1">Min Budget ($)</label>
+                  <label className="text-xs text-slate-700 font-bold block mb-1">Min Budget ($)</label>
                   <input
                     type="number"
+                    min={100}
                     value={budgetMin}
                     onChange={(e) => setBudgetMin(Number(e.target.value))}
-                    className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#0084ff] outline-none text-slate-900 font-mono shadow-sm"
+                    className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#0084ff] focus:bg-white outline-none text-slate-900 font-mono shadow-2xs"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-600 font-medium block mb-1">Max Budget ($)</label>
+                  <label className="text-xs text-slate-700 font-bold block mb-1">Max Budget ($)</label>
                   <input
                     type="number"
+                    min={100}
                     value={budgetMax}
                     onChange={(e) => setBudgetMax(Number(e.target.value))}
-                    className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#0084ff] outline-none text-slate-900 font-mono shadow-sm"
+                    className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#0084ff] focus:bg-white outline-none text-slate-900 font-mono shadow-2xs"
                   />
                 </div>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-sky-50 border border-sky-200 text-xs text-sky-900 space-y-1">
-                <div className="text-[#0084ff] font-bold flex items-center gap-1.5">
-                  <CheckCircle2 size={13} />
-                  <span>Direct Milestone Billing (Same as FLOXA Design)</span>
+              {budgetMax < budgetMin && (
+                <div className="text-[11px] text-rose-600 font-medium">
+                  Max budget must be greater than or equal to minimum budget.
                 </div>
-                <p className="text-[11px] text-slate-600 leading-relaxed font-normal">
-                  Clients pay directly per milestone upon deliverable approval. Platform holds zero funds.
+              )}
+
+              <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200 text-xs text-slate-700 space-y-1.5 leading-relaxed">
+                <div className="text-[#0084ff] font-bold flex items-center gap-1.5 text-xs">
+                  <ShieldCheck size={14} />
+                  <span>Direct Milestone Settlement (Zero Escrow)</span>
+                </div>
+                <p className="text-[11px] text-slate-600 font-normal">
+                  Clients disburse funds directly per milestone upon deliverable signoff. FLOXA Work never holds or escrows user funds.
                 </p>
               </div>
 
@@ -220,16 +276,27 @@ export const PostBriefModal: React.FC<PostBriefModalProps> = ({ onClose, onPostS
                 <button
                   type="button"
                   onClick={() => setStep(2)}
-                  className="btn-dark-pill text-xs px-4 py-2"
+                  className="btn-dark-pill text-xs px-4 py-2 flex items-center gap-1.5"
                 >
-                  Back
+                  <ArrowLeft size={13} />
+                  <span>Back</span>
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="btn-cyan-pill text-xs px-6 py-2"
+                  disabled={isSubmitting || budgetMax < budgetMin}
+                  className="btn-cyan-pill text-xs px-6 py-2.5 shadow-md flex items-center gap-2 disabled:opacity-40"
                 >
-                  {isSubmitting ? 'Publishing to DB...' : 'Publish Brief to Marketplace'}
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Publishing Brief...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 size={14} />
+                      <span>Publish Brief to Marketplace</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>

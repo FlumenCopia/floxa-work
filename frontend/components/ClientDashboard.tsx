@@ -13,6 +13,11 @@ import {
   Scale,
   Bookmark,
   BookmarkCheck,
+  ShieldCheck,
+  AlertTriangle,
+  X,
+  ChevronRight,
+  Info,
 } from 'lucide-react';
 import {
   fetchBriefs,
@@ -42,6 +47,20 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
   const [acceptedProposalId, setAcceptedProposalId] = useState<string | null>(null);
   const [isComparing, setIsComparing] = useState(false);
 
+  // Phase 15 Polish: Replaces browser alert/confirm with custom UI
+  const [selectedProposalForAcceptance, setSelectedProposalForAcceptance] = useState<any | null>(null);
+  const [declineTargetId, setDeclineTargetId] = useState<string | null>(null);
+  const [isSubmittingAcceptance, setIsSubmittingAcceptance] = useState(false);
+  const [isSubmittingDecline, setIsSubmittingDecline] = useState(false);
+  const [toast, setToast] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+
+  const showToast = (text: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setToast({ type, text });
+    setTimeout(() => {
+      setToast(null);
+    }, 4500);
+  };
+
   const loadData = async () => {
     setIsLoading(true);
     try {
@@ -63,34 +82,47 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
     loadData();
   }, []);
 
-  const handleAcceptProposal = async (proposalId: string) => {
+  const handleConfirmAcceptance = async () => {
+    if (!selectedProposalForAcceptance) return;
+    const propId = selectedProposalForAcceptance._id || selectedProposalForAcceptance.id;
+    setIsSubmittingAcceptance(true);
     try {
-      await acceptProposalAndPayAdvance(proposalId);
-      setAcceptedProposalId(proposalId);
+      await acceptProposalAndPayAdvance(propId);
+      setAcceptedProposalId(propId);
+      setSelectedProposalForAcceptance(null);
       setIsComparing(false);
+      showToast('Contract initialized successfully! Collaboration workspace is ready.', 'success');
       onEscrowReleased();
       loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to accept proposal');
+      showToast(err.message || 'Failed to accept proposal and initialize contract', 'error');
+    } finally {
+      setIsSubmittingAcceptance(false);
     }
   };
 
   const handleShortlist = async (proposalId: string) => {
     try {
       await shortlistProposal(proposalId);
+      showToast('Proposal shortlist status updated.', 'info');
       loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to update shortlist');
+      showToast(err.message || 'Failed to update shortlist', 'error');
     }
   };
 
-  const handleDecline = async (proposalId: string) => {
-    if (!confirm('Are you sure you want to decline this proposal?')) return;
+  const handleConfirmDecline = async () => {
+    if (!declineTargetId) return;
+    setIsSubmittingDecline(true);
     try {
-      await declineProposal(proposalId);
+      await declineProposal(declineTargetId);
+      showToast('Proposal declined.', 'info');
+      setDeclineTargetId(null);
       loadData();
     } catch (err: any) {
-      alert(err.message || 'Failed to decline proposal');
+      showToast(err.message || 'Failed to decline proposal', 'error');
+    } finally {
+      setIsSubmittingDecline(false);
     }
   };
 
@@ -103,6 +135,33 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification Banner */}
+      {toast && (
+        <div
+          role="alert"
+          aria-live="polite"
+          className={`fixed top-4 right-4 z-50 flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-xl text-xs font-semibold backdrop-blur-md transition-all animate-in slide-in-from-top-2 border ${
+            toast.type === 'success'
+              ? 'bg-emerald-950/90 text-emerald-100 border-emerald-500/40'
+              : toast.type === 'error'
+              ? 'bg-rose-950/90 text-rose-100 border-rose-500/40'
+              : 'bg-slate-900/90 text-slate-100 border-cyan-500/40'
+          }`}
+        >
+          {toast.type === 'success' && <CheckCircle2 size={16} className="text-emerald-400" />}
+          {toast.type === 'error' && <AlertTriangle size={16} className="text-rose-400" />}
+          {toast.type === 'info' && <Info size={16} className="text-cyan-400" />}
+          <span>{toast.text}</span>
+          <button
+            onClick={() => setToast(null)}
+            className="p-1 rounded-full text-slate-400 hover:text-white"
+            aria-label="Dismiss notification"
+          >
+            <X size={13} />
+          </button>
+        </div>
+      )}
+
       {/* 4 KPI Metrics Grid (Calculated from Live Database) */}
       <div className="kpi-grid">
         <div className="kpi-card">
@@ -123,7 +182,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
           <div>
             <div className="kpi-label">Active Briefs</div>
             <div className="kpi-value">{activeBriefsCount}</div>
-            <div className="kpi-sub">{activeBriefsCount > 0 ? `${activeBriefsCount} live in marketplace` : 'No active briefs'}</div>
+            <div className="kpi-sub">{briefs.length > 0 ? 'Diagnostic briefs live' : 'No briefs published'}</div>
           </div>
         </div>
 
@@ -132,9 +191,9 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             <Clock size={20} />
           </div>
           <div>
-            <div className="kpi-label">Pending Reviews</div>
-            <div className="kpi-value">{pendingReviewsCount}</div>
-            <div className="kpi-sub">{pendingReviewsCount > 0 ? 'Proposals awaiting review' : 'All reviews clear'}</div>
+            <div className="kpi-label">Proposals Received</div>
+            <div className="kpi-value">{proposals.length}</div>
+            <div className="kpi-sub">{pendingReviewsCount} awaiting evaluation</div>
           </div>
         </div>
 
@@ -143,9 +202,9 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             <CheckCircle size={20} />
           </div>
           <div>
-            <div className="kpi-label">Completed Gigs</div>
+            <div className="kpi-label">Active Contracts</div>
             <div className="kpi-value">{acceptedCount}</div>
-            <div className="kpi-sub">Accepted contracts</div>
+            <div className="kpi-sub">Collaborative workspaces</div>
           </div>
         </div>
       </div>
@@ -165,7 +224,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
             onClick={() => setActiveTab('active_escrow')}
             className={`pill-tab ${activeTab === 'active_escrow' ? 'active' : ''}`}
           >
-            <span>Active Contract</span>
+            <span>Active Workspaces</span>
             <span className="pill-tab-count">${escrowTotal.toLocaleString()}</span>
           </button>
 
@@ -244,10 +303,10 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
           ) : (
             proposals.map((proposal) => {
               const freelancer = proposal.freelancerId || {};
-              const authorName = freelancer.name || 'Aravind V.';
-              const authorHandle = freelancer.handle || 'aravind_design';
+              const authorName = freelancer.name || 'Candidate';
+              const authorHandle = freelancer.handle || 'consultant';
               const avatar = freelancer.avatarUrl || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80';
-              const diagnosis = proposal.diagnosticAnswers?.[0]?.answer || 'Candidate provided detailed technical discovery.';
+              const diagnosis = proposal.problemDiagnosis?.understanding || proposal.diagnosticAnswers?.[0]?.answer || 'Candidate provided detailed technical discovery.';
               const sliderVal = proposal.strategicSliders?.[0]?.value || 80;
               const isAccepted = proposal.status === 'accepted' || acceptedProposalId === proposal._id;
 
@@ -292,7 +351,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                   {/* Diagnosis */}
                   <div className="space-y-1.5">
                     <div className="text-xs font-bold text-[#0084ff] uppercase tracking-wider">
-                      Problem Diagnosis
+                      Problem Diagnosis & Discovery
                     </div>
                     <p className="text-xs sm:text-sm text-slate-700 leading-relaxed bg-white/80 p-3.5 rounded-xl border border-slate-200/80 shadow-sm">
                       {diagnosis}
@@ -302,9 +361,9 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                   {/* Slider Preview */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 font-medium">Execution Direction</span>
+                      <span className="text-slate-500 font-medium">Execution Strategy Alignment</span>
                       <span className="text-[#0084ff] font-bold font-mono">
-                        {sliderVal}% Consumer Friendly
+                        {sliderVal}% Structured Alignment
                       </span>
                     </div>
                     <div className="w-full h-2 rounded-full bg-slate-100 border border-slate-200 overflow-hidden">
@@ -345,19 +404,27 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                       >
                         <Scale size={14} />
                       </button>
+
+                      <button
+                        onClick={() => setDeclineTargetId(proposal._id || proposal.id)}
+                        disabled={isAccepted}
+                        className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-500 hover:text-rose-600 hover:border-rose-200 text-xs font-bold transition-colors disabled:opacity-40"
+                      >
+                        Decline
+                      </button>
                     </div>
 
                     {isAccepted ? (
                       <span className="px-4 py-2 rounded-full bg-[#e0f2fe] text-[#0284c7] border border-[#bae6fd] text-xs font-bold flex items-center justify-center gap-1.5 w-full sm:w-auto">
                         <CheckCircle2 size={14} />
-                        <span>Agreement Signed & Advance Arranged</span>
+                        <span>Contract Signed & Initialized</span>
                       </span>
                     ) : (
                       <button
-                        onClick={() => handleAcceptProposal(proposal._id || proposal.id)}
+                        onClick={() => setSelectedProposalForAcceptance(proposal)}
                         className="btn-cyan-pill text-xs px-4 sm:px-5 py-2.5 w-full sm:w-auto text-center justify-center"
                       >
-                        <span>Accept Proposal & Start Project (${Math.round((proposal.totalPrice || 2400) * 0.4).toLocaleString()} Advance)</span>
+                        <span>Review & Accept Proposal (${Math.round((proposal.totalPrice || 2400) * 0.4).toLocaleString()} Advance)</span>
                       </button>
                     )}
                   </div>
@@ -427,12 +494,190 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
         <ProposalComparisonEngine
           brief={briefs[0] || { title: 'Project Discovery Brief' }}
           proposals={proposals}
-          onAcceptProposal={handleAcceptProposal}
+          onAcceptProposal={(proposalOrId: any) => {
+            if (typeof proposalOrId === 'string') {
+              const matched = proposals.find((p) => (p._id || p.id) === proposalOrId);
+              setSelectedProposalForAcceptance(matched || { _id: proposalOrId, totalPrice: 2400 });
+            } else {
+              setSelectedProposalForAcceptance(proposalOrId);
+            }
+          }}
           onShortlistProposal={handleShortlist}
-          onDeclineProposal={handleDecline}
+          onDeclineProposal={(id: string) => setDeclineTargetId(id)}
           onOpenCall={onOpenCall}
           onClose={() => setIsComparing(false)}
         />
+      )}
+
+      {/* Phase 15 Polish: Explicit Proposal Acceptance Confirmation Modal */}
+      {selectedProposalForAcceptance && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-lg w-full space-y-5 shadow-2xl border border-slate-200 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#0084ff]/10 text-[#0084ff] flex items-center justify-center font-bold">
+                  <ShieldCheck size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-extrabold text-slate-900">Confirm Contract Initialization</h3>
+                  <p className="text-[11px] text-slate-500 font-medium">Review terms before freezing immutable snapshot</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedProposalForAcceptance(null)}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-600"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Candidate & Bid Summary */}
+            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <img
+                  src={
+                    selectedProposalForAcceptance.freelancerId?.avatarUrl ||
+                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80'
+                  }
+                  alt="Candidate"
+                  className="w-10 h-10 rounded-full object-cover border border-[#0084ff]/20"
+                />
+                <div>
+                  <div className="text-xs font-bold text-slate-900">
+                    {selectedProposalForAcceptance.freelancerId?.name || 'Selected Candidate'}
+                  </div>
+                  <div className="text-[11px] text-slate-500 font-mono">
+                    @{selectedProposalForAcceptance.freelancerId?.handle || 'consultant'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className="text-base font-black text-[#0084ff] font-mono">
+                  ${selectedProposalForAcceptance.totalPrice?.toLocaleString()}
+                </div>
+                <div className="text-[10.5px] text-slate-500 font-semibold">
+                  {selectedProposalForAcceptance.estimatedDays || 21} Days Est.
+                </div>
+              </div>
+            </div>
+
+            {/* Proposed Milestones Snapshot Preview */}
+            <div className="space-y-2">
+              <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                <span>Agreed Milestones Schedule</span>
+                <span className="text-[#0084ff] font-mono font-semibold">
+                  {selectedProposalForAcceptance.proposedMilestones?.length || 3} Milestones
+                </span>
+              </div>
+              <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                {(selectedProposalForAcceptance.proposedMilestones || [
+                  { title: 'Discovery & Strategic Direction', amount: (selectedProposalForAcceptance.totalPrice || 2400) * 0.4, deliveryDays: 7 },
+                  { title: 'Core Implementation & Deliverable', amount: (selectedProposalForAcceptance.totalPrice || 2400) * 0.4, deliveryDays: 14 },
+                  { title: 'Final Handover & Polish', amount: (selectedProposalForAcceptance.totalPrice || 2400) * 0.2, deliveryDays: 7 },
+                ]).map((m: any, idx: number) => (
+                  <div
+                    key={idx}
+                    className="p-2 rounded-xl bg-white border border-slate-200 text-xs flex items-center justify-between shadow-2xs"
+                  >
+                    <div className="truncate mr-2">
+                      <span className="font-bold text-slate-800">M{idx + 1}: {m.title}</span>
+                      <span className="text-[10px] text-slate-400 block font-normal">{m.deliveryDays || 7} days</span>
+                    </div>
+                    <span className="font-mono font-extrabold text-slate-800 shrink-0">
+                      ${m.amount?.toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Explicit Non-Custodial Legal & Settlement Notice */}
+            <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200 text-blue-900 text-[11px] space-y-1.5 leading-relaxed">
+              <div className="font-bold flex items-center gap-1.5 text-xs text-[#0084ff]">
+                <ShieldCheck size={14} />
+                <span>Zero-Custody Direct Billing Disclosure</span>
+              </div>
+              <p className="text-slate-600">
+                FLOXA Work does not take custody of funds, provide escrow, or hold balances. Advance and milestone payments are settled directly between you and the freelancer via external channels (bank transfer, UPI, Stripe, wire).
+              </p>
+              <p className="text-slate-600">
+                Accepting freezes the agreed deliverables and milestone schedule into an immutable collaboration workspace.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setSelectedProposalForAcceptance(null)}
+                disabled={isSubmittingAcceptance}
+                className="px-4 py-2.5 rounded-full border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                Keep Reviewing
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmAcceptance}
+                disabled={isSubmittingAcceptance}
+                className="btn-cyan-pill text-xs px-5 py-2.5 shadow-md flex items-center gap-2"
+              >
+                {isSubmittingAcceptance ? (
+                  <>
+                    <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Initializing Contract...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={14} />
+                    <span>Confirm & Initialize Contract</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Phase 15 Polish: Custom Decline Confirmation Modal */}
+      {declineTargetId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-in fade-in">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full space-y-4 shadow-2xl border border-slate-200">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                <AlertTriangle size={20} />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">Decline Proposal</h4>
+                <p className="text-xs text-slate-500">This action will archive the proposal.</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-600 leading-relaxed">
+              Are you sure you want to decline this proposal? The candidate will be notified that you are pursuing other proposals.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeclineTargetId(null)}
+                disabled={isSubmittingDecline}
+                className="px-4 py-2 rounded-full border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDecline}
+                disabled={isSubmittingDecline}
+                className="px-4 py-2 rounded-full bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-xs"
+              >
+                {isSubmittingDecline ? 'Declining...' : 'Yes, Decline'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

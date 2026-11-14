@@ -369,7 +369,10 @@ export const WorkspaceView: React.FC = () => {
       });
       await loadWorkspace();
     } catch (err: any) {
-      alert(err.message || 'Failed to dispute payment');
+      setActionMessage({
+        type: 'error',
+        text: err.message || 'Failed to dispute payment',
+      });
     } finally {
       setIsProcessing(false);
     }
@@ -2043,6 +2046,17 @@ export const WorkspaceView: React.FC = () => {
               <button onClick={() => setIsDisputeModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X size={16} />
               </button>
+            </div>
+
+            {/* Non-Custodial Disclosure */}
+            <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] leading-relaxed space-y-1">
+              <div className="font-bold flex items-center gap-1.5 text-xs text-amber-800">
+                <AlertCircle size={13} />
+                <span>Non-Custodial Mediation Notice</span>
+              </div>
+              <p className="text-slate-600">
+                FLOXA Work does not hold or escrow funds. Reporting an unreceived payment pauses milestone signoff and alerts platform moderation to review UTR / transfer evidence with both parties.
+              </p>
             </div>
 
             <form onSubmit={handleDisputePayment} className="space-y-3.5">

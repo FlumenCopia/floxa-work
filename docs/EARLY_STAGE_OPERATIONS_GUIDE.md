@@ -41,3 +41,4 @@ If MongoDB Atlas alerts that connections are high:
 1. Navigate to User Administration in the Admin Portal.
 2. Toggle the user's status to `suspended` with a documented reason.
 3. This revokes all active session families in MongoDB immediately.
+

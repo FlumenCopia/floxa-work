@@ -50,3 +50,4 @@ Phase 14 refines and stabilizes FLOXA Work for initial commercial deployment to 
 2. **Deploy Backend Web Service:** Connect GitHub repository to Render / Railway with environment variables.
 3. **Deploy Frontend:** Connect repository to Vercel pointing to the backend API domain.
 4. **Configure Transactional Email:** Add SendGrid, Resend, or Mailgun SMTP credentials to enable transactional email delivery before opening public user registration.
+

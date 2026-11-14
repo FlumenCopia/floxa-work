@@ -44,3 +44,4 @@
 1. **Transactional Email Wiring:** Imported `emailService` into `auth.controller.ts` for password reset (`POST /api/auth/forgot-password`) and email verification (`POST /api/auth/request-email-verification`). Added non-blocking dispatch with graceful log fallback.
 2. **API Route Aliasing:** Added route aliases so both `POST /proposals` and `POST /briefs/:briefId/proposals` work seamlessly, and both `POST /contracts` and `POST /proposals/:proposalId/accept` are supported.
 3. **Database Restore Isolation:** Updated `backup-database.cjs` and `restore-database.cjs` to use isolated connection instances (`createConnection`), preventing global mongoose disconnects during automated test runs.
+

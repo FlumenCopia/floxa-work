@@ -55,6 +55,12 @@ export const ProposalComparisonEngine: React.FC<ProposalComparisonEngineProps> =
   const [activeTab, setActiveTab] = useState<'all' | 'shortlisted'>('all');
   const [sortBy, setSortBy] = useState<string>('recent');
   const [searchQuery, setSearchQuery] = useState('');
+  const [warningMsg, setWarningMsg] = useState<string | null>(null);
+
+  const showWarning = (msg: string) => {
+    setWarningMsg(msg);
+    setTimeout(() => setWarningMsg(null), 3500);
+  };
 
   // Filter & sort proposals
   let filteredProposals = proposals.filter((p) => {
@@ -85,13 +91,13 @@ export const ProposalComparisonEngine: React.FC<ProposalComparisonEngineProps> =
   const toggleSelect = (id: string) => {
     if (selectedIds.includes(id)) {
       if (selectedIds.length <= 2) {
-        alert('You must compare at least 2 proposals.');
+        showWarning('You must compare at least 2 proposals side-by-side.');
         return;
       }
       setSelectedIds(selectedIds.filter((item) => item !== id));
     } else {
       if (selectedIds.length >= 4) {
-        alert('You can compare a maximum of 4 proposals at the same time.');
+        showWarning('Maximum of 4 proposals can be compared simultaneously.');
         return;
       }
       setSelectedIds([...selectedIds, id]);
@@ -145,6 +151,15 @@ export const ProposalComparisonEngine: React.FC<ProposalComparisonEngineProps> =
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto bg-slate-50 p-3 sm:p-6 space-y-4">
+        {warningMsg && (
+          <div className="bg-amber-50 border border-amber-300 text-amber-800 text-xs px-4 py-2.5 rounded-2xl flex items-center justify-between shadow-xs animate-in fade-in">
+            <span className="font-semibold">{warningMsg}</span>
+            <button onClick={() => setWarningMsg(null)} className="text-amber-600 hover:text-amber-900 ml-2">
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
         {/* Proposal Selector Strip */}
         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -610,10 +625,10 @@ export const ProposalComparisonEngine: React.FC<ProposalComparisonEngineProps> =
                     </div>
                   ) : (
                     <button
-                      onClick={() => onAcceptProposal(proposal._id || proposal.id)}
+                      onClick={() => onAcceptProposal(proposal)}
                       className="btn-cyan-pill w-full text-xs py-2 justify-center shadow-xs"
                     >
-                      <span>Accept & Initialize Contract</span>
+                      <span>Review & Initialize Contract</span>
                     </button>
                   )}
                 </div>
