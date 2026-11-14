@@ -1433,5 +1433,126 @@ export async function moderateReviewApi(reviewId: string, action: string, modera
   return data;
 }
 
+// -------------------------------------------------------------
+// Phase 12: Admin Operations, Analytics & Governance
+// -------------------------------------------------------------
+
+export async function fetchAdminOverviewAnalyticsApi(timeframe = '30d') {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/admin/analytics/overview?timeframe=${timeframe}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch executive analytics');
+  return data;
+}
+
+export async function fetchMarketplaceAnalyticsApi() {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/admin/analytics/marketplace`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch marketplace analytics');
+  return data;
+}
+
+export async function fetchAdminContractsApi(filters: Record<string, any> = {}) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const query = new URLSearchParams(filters).toString();
+  const res = await fetch(`${API_BASE}/admin/contracts?${query}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch admin contracts');
+  return data;
+}
+
+export async function fetchAdminUserDetailsApi(userId: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch user details');
+  return data;
+}
+
+export async function updateUserAccountStatusApi(userId: string, status: string, reason?: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/admin/users/${userId}/status`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ status, reason }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to update user status');
+  return data;
+}
+
+export async function updateUserRestrictionsApi(userId: string, restrictions: { messagingRestricted?: boolean; invitationsRestricted?: boolean; reason?: string }) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/admin/users/${userId}/restrictions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(restrictions),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to update restrictions');
+  return data;
+}
+
+export async function updateAdminUserRoleApi(userId: string, adminRole: string, role?: string) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/admin/users/${userId}/admin-role`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ adminRole, role }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to update admin role');
+  return data;
+}
+
+export async function fetchAdminAuditLogsApi(filters: Record<string, any> = {}) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const query = new URLSearchParams(filters).toString();
+  const res = await fetch(`${API_BASE}/admin/audit-logs?${query}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch audit logs');
+  return data;
+}
+
+export async function fetchSystemHealthApi() {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/admin/system-health`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch system health');
+  return data;
+}
+
+
 
 

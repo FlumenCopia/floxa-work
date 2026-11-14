@@ -40,7 +40,7 @@ async function createSession(
 
 export async function register(req: Request, res: Response): Promise<void> {
   try {
-    const { email, password, name, handle, role } = req.body;
+    const { email, password, name, handle, role, adminRole } = req.body;
     if (!email || !password || !name || !handle) {
       res.status(400).json({ error: 'All fields (email, password, name, handle) are required.' });
       return;
@@ -63,6 +63,7 @@ export async function register(req: Request, res: Response): Promise<void> {
       name,
       handle: handle.toLowerCase(),
       role: role || 'dual',
+      adminRole: role === 'admin' ? (adminRole || 'super_admin') : undefined,
     });
 
     if (user.role === 'freelancer' || user.role === 'dual') {
@@ -75,7 +76,13 @@ export async function register(req: Request, res: Response): Promise<void> {
 
     // Access token (15m for production security, or longer if backward-compatible; using 15m with rotation)
     const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role, name: user.name },
+      {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        adminRole: user.adminRole || (user.role === 'admin' ? 'super_admin' : undefined),
+        name: user.name,
+      },
       ENV.JWT_ACCESS_SECRET,
       { expiresIn: '15m' }
     );
@@ -127,8 +134,22 @@ export async function login(req: Request, res: Response): Promise<void> {
       return;
     }
 
+    if (user.status === 'suspended') {
+      res.status(403).json({
+        error: `Account suspended. Reason: ${user.suspensionReason || 'Please contact platform administration.'}`,
+        suspended: true,
+      });
+      return;
+    }
+
     const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role, name: user.name },
+      {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        adminRole: user.adminRole || (user.role === 'admin' ? 'super_admin' : undefined),
+        name: user.name,
+      },
       ENV.JWT_ACCESS_SECRET,
       { expiresIn: '15m' }
     );
@@ -216,7 +237,13 @@ export async function refreshTokenHandler(req: Request, res: Response): Promise<
     }
 
     const newAccessToken = jwt.sign(
-      { id: user._id, email: user.email, role: user.role, name: user.name },
+      {
+        id: user._id,
+        email: user.email,
+        role: user.role,
+        adminRole: user.adminRole || (user.role === 'admin' ? 'super_admin' : undefined),
+        name: user.name,
+      },
       ENV.JWT_ACCESS_SECRET,
       { expiresIn: '15m' }
     );

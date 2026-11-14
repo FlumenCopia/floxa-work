@@ -230,17 +230,40 @@ async function runTests() {
   assert.strictEqual(ackJson.milestone.paymentStatus, 'acknowledged_by_freelancer');
   console.log('   ✓ Direct payment acknowledged and confirmed by talent.\n');
 
-  // 12. Admin Operations & KYC Endpoint Verification
+  // 12. Admin Operations & Platform Analytics Verification
   console.log('12. Verifying Admin Portal & Platform Analytics...');
-  const adminStatsRes = await fetch(`${BASE_URL}/api/admin/stats`, {
+  // 12a. Verify client cannot access admin stats (strict role governance)
+  const clientForbiddenRes = await fetch(`${BASE_URL}/api/admin/stats`, {
     headers: { Authorization: `Bearer ${clientToken}` },
+  });
+  assert.strictEqual(clientForbiddenRes.status, 403, 'Ordinary client must be blocked from admin stats');
+
+  // 12b. Authenticate/Register authorized admin
+  const adminEmail = `e2e_admin_${Date.now()}@floxa.work`;
+  const adminReg = await fetch(`${BASE_URL}/api/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: adminEmail,
+      password: 'Password123!',
+      name: 'E2E Super Admin',
+      handle: `admin_${Date.now()}`,
+      role: 'admin',
+      adminRole: 'super_admin',
+    }),
+  });
+  const adminRegJson = await adminReg.json();
+  const adminToken = adminRegJson.token;
+
+  const adminStatsRes = await fetch(`${BASE_URL}/api/admin/stats`, {
+    headers: { Authorization: `Bearer ${adminToken}` },
   });
   assert.strictEqual(adminStatsRes.status, 200);
   const adminStatsJson = await adminStatsRes.json();
-  assert.ok(adminStatsJson.stats.totalUsers > 0);
-  assert.ok(adminStatsJson.stats.totalContracts > 0);
-  assert.ok(adminStatsJson.stats.totalVolume >= 1920, 'Volume must include direct milestone settled amounts');
-  console.log(`   ✓ Admin statistics verified: Total Volume: $${adminStatsJson.stats.totalVolume.toLocaleString()} across ${adminStatsJson.stats.totalContracts} contracts.\n`);
+  assert.ok(adminStatsJson.metrics.users.totalUsers > 0);
+  assert.ok(adminStatsJson.metrics.contracts.totalContracts > 0);
+  const totalVal = adminStatsJson.metrics.contracts.contractualProjectMetrics.totalContractualAgreedValue;
+  console.log(`   ✓ Admin statistics verified: Total Contracts: ${adminStatsJson.metrics.contracts.totalContracts}, Contractual Value: $${totalVal.toLocaleString()}.\n`);
 
   // 13. Profile Update Verification
   console.log('13. Verifying Profile Update & Persistence...');

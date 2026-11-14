@@ -85,9 +85,19 @@ import {
 } from '../controllers/file.controller.js';
 import {
   getAdminPlatformStats,
+  getMarketplaceAnalytics,
+  getAdminContracts,
   getAdminUsers,
+  getAdminUserDetails,
+  updateUserAccountStatus,
+  updateUserRestrictions,
+  updateAdminUserRole,
   toggleUserVerification,
+  getAdminAuditLogs,
+  getSystemHealth,
+  exportPlatformData,
 } from '../controllers/admin.controller.js';
+import { requireAdminPermission } from '../middleware/admin.middleware.js';
 import {
   createContractReview,
   getContractReviewStatus,
@@ -234,10 +244,20 @@ router.get('/files/:filename/view', viewFile);
 router.get('/messages', requireAuth, getMessages);
 router.post('/messages', requireAuth, sendMessage);
 
-// Admin Moderation & Platform Analytics
-router.get('/admin/stats', requireAuth, getAdminPlatformStats);
-router.get('/admin/users', requireAuth, getAdminUsers);
-router.post('/admin/users/:userId/verify', requireAuth, toggleUserVerification);
+// Admin Operations, Platform Analytics & Governance (Phase 12)
+router.get('/admin/stats', requireAuth, requireAdminPermission('analytics:view'), getAdminPlatformStats);
+router.get('/admin/analytics/overview', requireAuth, requireAdminPermission('analytics:view'), getAdminPlatformStats);
+router.get('/admin/analytics/marketplace', requireAuth, requireAdminPermission('analytics:view'), getMarketplaceAnalytics);
+router.get('/admin/contracts', requireAuth, requireAdminPermission('contracts:view'), getAdminContracts);
+router.get('/admin/users', requireAuth, requireAdminPermission('users:view'), getAdminUsers);
+router.get('/admin/users/:userId', requireAuth, requireAdminPermission('users:view'), getAdminUserDetails);
+router.post('/admin/users/:userId/verify', requireAuth, requireAdminPermission('users:manage'), toggleUserVerification);
+router.patch('/admin/users/:userId/status', requireAuth, requireAdminPermission('users:manage'), updateUserAccountStatus);
+router.post('/admin/users/:userId/restrictions', requireAuth, requireAdminPermission('users:manage'), updateUserRestrictions);
+router.patch('/admin/users/:userId/admin-role', requireAuth, requireAdminPermission('roles:manage'), updateAdminUserRole);
+router.get('/admin/audit-logs', requireAuth, requireAdminPermission('audit:view'), getAdminAuditLogs);
+router.get('/admin/system-health', requireAuth, requireAdminPermission('health:view'), getSystemHealth);
+router.get('/admin/exports/:type', requireAuth, requireAdminPermission('exports:generate'), exportPlatformData);
 
 // Phase 11: Trust, Reputation & Verified Reviews (Double-Blind)
 router.post('/contracts/:contractId/reviews', requireAuth, createContractReview);
