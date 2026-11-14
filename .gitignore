@@ -27,6 +27,7 @@ backend/backups/
 *.sha256
 
 # Uploads & User Media
+media/
 backend/media/uploads/
 backend/media/temp/
 backend/media/private_vault/

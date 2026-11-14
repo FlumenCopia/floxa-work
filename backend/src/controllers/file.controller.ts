@@ -120,8 +120,8 @@ export async function uploadSingleFile(
         mimeType: fileDoc.mimeType,
         sizeBytes: fileDoc.sizeBytes,
         category: fileDoc.category,
-        accessUrl: `http://localhost:5001${fileDoc.accessUrl}`,
-        downloadUrl: `http://localhost:5001/api/files/${fileDoc.id}/download`,
+        accessUrl: `${req.protocol}://${req.get('host')}${fileDoc.accessUrl}`,
+        downloadUrl: `${req.protocol}://${req.get('host')}/api/files/${fileDoc.id}/download`,
       },
     });
   } catch (error: any) {

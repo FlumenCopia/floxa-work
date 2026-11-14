@@ -182,7 +182,15 @@ export default function HomePage() {
 
     function connect() {
       if (isCleanedUp) return;
-      const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:5001/ws';
+      let wsUrl = process.env.NEXT_PUBLIC_WS_URL;
+      if (!wsUrl) {
+        if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+          const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+          wsUrl = `${proto}//${window.location.host}/ws`;
+        } else {
+          wsUrl = 'ws://localhost:5001/ws';
+        }
+      }
       socket = new WebSocket(wsUrl);
       socketRef.current = socket;
 

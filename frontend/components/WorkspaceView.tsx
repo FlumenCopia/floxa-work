@@ -62,6 +62,7 @@ import {
   fetchContractDisputesApi,
   fetchDisputeDetailsApi,
   sendDisputeMessageApi,
+  API_BASE,
 } from '@/lib/api';
 
 export const WorkspaceView: React.FC = () => {
@@ -1258,7 +1259,7 @@ export const WorkspaceView: React.FC = () => {
                   </div>
 
                   <a
-                    href={`http://localhost:5001/api/files/${encodeURIComponent(f.filename)}/download`}
+                    href={`${API_BASE}/files/${encodeURIComponent(f.filename)}/download`}
                     target="_blank"
                     rel="noreferrer"
                     className="p-2 rounded-lg bg-white border border-slate-200 text-slate-600 hover:text-[#0084ff] shrink-0"
