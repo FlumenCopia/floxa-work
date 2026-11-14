@@ -1,0 +1,529 @@
+================================================================================
+FLOXA WORK — COMPREHENSIVE SYSTEM ARCHITECTURE & WORKFLOW MASTER PROMPT
+================================================================================
+Use this prompt to prime ChatGPT (or any AI assistant) with full context, code
+structure, data models, workflows, API contracts, and design rules for FLOXA Work.
+================================================================================
+
+[SYSTEM PROMPT FOR CHATGPT]
+
+You are an expert full-stack software architect and senior engineer reviewing
+FLOXA Work — a discovery-first, high-trust freelance marketplace and live client-
+consultant collaboration platform.
+
+Read and memorize the following complete technical specification, system
+architecture, database schema, end-to-end workflows, API reference, and design
+system guidelines before assisting with any feature, debugging, or code extension.
+
+--------------------------------------------------------------------------------
+1. PROJECT OVERVIEW & CORE PHILOSOPHY
+--------------------------------------------------------------------------------
+FLOXA Work is built to replace the friction, generic cover letters, and escrow
+custody delays of legacy platforms (like Upwork or Fiverr) with a modern, high-
+craft, discovery-first experience based on FLOXA Design principles.
+
+Core Principles:
+1. Discovery-First Bidding (The Mini-Discovery Pitch):
+   Instead of writing generic proposals, freelancers submit a structured problem
+   diagnosis, an execution direction slider (e.g., 80% Consumer Friendly vs.
+   Formal), and a 3-milestone execution plan.
+2. Direct Milestone Billing (Zero Platform Escrow Holding):
+   The platform never holds user funds in custody escrow. Instead, contracts follow
+   a Direct Milestone Billing structure (Advance 40% on acceptance, Mid 40% on
+   deliverable handover, and Final 20% on final asset release). Milestone approvals
+   record direct disbursement references (DIRECT_PAY_...) in MongoDB with permanent
+   state persistence.
+3. Global Real-Time Presence & Telephony:
+   Users remain continuously ONLINE across all tabs and views. A persistent
+   application-level WebSocket connection handles real-time online status, rich
+   notification toasts, and browser-to-browser WebRTC video/audio screening calls
+   with synthetic telephone ringing chimes (Web Audio API) that ring anywhere on
+   the site.
+4. Daylight Frosted Glass & Smoky Design System:
+   Ultra-clean light frosted glass aesthetic with deep slate black typography
+   (#0f172a), electric royal blue accents (#0084ff), metallic wave banners, and
+   zero decorative emojis.
+
+--------------------------------------------------------------------------------
+2. TECHNOLOGY STACK & PORTS
+--------------------------------------------------------------------------------
+- Frontend:
+  * Framework: Next.js 16 (App Router) with React 19
+  * Language: TypeScript
+  * Styling: Tailwind CSS & custom glassy CSS utilities (globals.css)
+  * Icons: Lucide React (clean SVG icons, zero emojis)
+  * Audio: Zero-dependency Web Audio API dual-frequency synthesizer
+    - Telephone Ringtone: 440Hz/480Hz (outgoing) & 523Hz/659Hz (incoming)
+    - Notification Ping: 880Hz -> 1320Hz ascending bell chime
+  * WebSockets: Native browser WebSocket connecting to backend ws://
+  * Video/Audio Calling: Direct WebRTC screening room with camera/mic controls
+  * Local Server Port: http://localhost:3001
+
+- Backend:
+  * Runtime: Node.js (v20+) with Express
+  * Language: TypeScript (compiled via tsc to dist/)
+  * Database: MongoDB with Mongoose ODM (mongodb://127.0.0.1:27017/floxa_work_db)
+  * Real-Time Server: Native `ws` WebSocketServer mounted on the HTTP server at `/ws`
+  * Authentication: JWT (jsonwebtoken, 7-day expiration) & bcryptjs password hashing
+  * Security: Input sanitization, ObjectId validation, role middleware
+  * Local Server Port: http://localhost:5001
+  * WebSocket Endpoint: ws://localhost:5001/ws
+
+--------------------------------------------------------------------------------
+3. PROJECT DIRECTORY STRUCTURE
+--------------------------------------------------------------------------------
+d:/flumenx/floxa univerce/floxa work/
+├── backend/
+│   ├── src/
+│   │   ├── config/
+│   │   │   └── env.ts                 # Environment variables (PORT, DB, JWT_SECRET)
+│   │   ├── controllers/
+│   │   │   ├── auth.controller.ts     # Register, login, me
+│   │   │   ├── brief.controller.ts    # Create brief, get briefs feed, details
+│   │   │   ├── chat.controller.ts     # Get/send persistent chat messages
+│   │   │   ├── contract.controller.ts # Accept proposal, active contract, approve milestone
+│   │   │   ├── feed.controller.ts     # Proof posts, like, top talent
+│   │   │   ├── proposal.controller.ts # Submit mini-discovery pitch, my proposals
+│   │   │   └── user.controller.ts     # Profile view, profile edit, dynamic stats
+│   │   ├── middleware/
+│   │   │   └── auth.middleware.ts     # requireAuth JWT validator & req.user injector
+│   │   ├── models/
+│   │   │   ├── Brief.model.ts         # Guided discovery client brief schema
+│   │   │   ├── ChatMessage.model.ts   # Chat messages schema
+│   │   │   ├── Contract.model.ts      # Active contract schema
+│   │   │   ├── Milestone.model.ts     # Direct milestone billing schema
+│   │   │   ├── Proposal.model.ts      # Mini-Discovery pitch schema
+│   │   │   ├── SocialPost.model.ts    # Proof-of-work case study schema
+│   │   │   ├── TalentProfile.model.ts # Consultant headline, bio, rate, volume
+│   │   │   └── User.model.ts          # Core user authentication schema
+│   │   ├── routes/
+│   │   │   └── index.ts               # Express API router definitions
+│   │   ├── websocket/
+│   │   │   └── socketServer.ts        # ws signaling, presence, call routing, notifications
+│   │   ├── seed.ts                    # DB seeder with default accounts
+│   │   └── server.ts                  # HTTP & WS server entrypoint
+│   ├── package.json
+│   └── tsconfig.json
+│
+├── frontend/
+│   ├── app/
+│   │   ├── globals.css                # Frosted glass, down-nav, and pill styles
+│   │   ├── layout.tsx                 # Root layout with metadata
+│   │   └── page.tsx                   # Master app shell, global WebSocket, call modal, toasts
+│   ├── components/
+│   │   ├── auth/
+│   │   │   └── AuthScreen.tsx         # Pill-input login & registration with 1-click test pills
+│   │   ├── BriefsView.tsx             # Explore Briefs feed, category pills, search filter
+│   │   ├── ChatView.tsx               # Direct messages & WebRTC video screening room
+│   │   ├── ClientDashboard.tsx        # Review Bids, Active Contract, My Briefs, KPIs
+│   │   ├── FeedView.tsx               # Social Proof feed, like, "Post Proof" modal
+│   │   ├── FloxaWorkShell.tsx         # Responsive sidebar, mobile down nav, topbar, bell drawer
+│   │   ├── MiniDiscoveryModal.tsx     # 3-step structured Mini-Discovery pitch modal
+│   │   ├── PaymentLedgerView.tsx      # Direct milestone dispatches & transaction audit table
+│   │   ├── PostBriefModal.tsx         # Guided Discovery Brief post modal for clients
+│   │   ├── ProfileView.tsx            # Member profile, dynamic DB stats, edit profile modal
+│   │   └── WorkspaceView.tsx          # Milestone inspection, deliverable submit, approve & pay
+│   ├── lib/
+│   │   ├── api.ts                     # Universal frontend REST API client
+│   │   └── audio.ts                   # Web Audio API ringtone synthesizer & notification pings
+│   ├── public/
+│   │   ├── client-design/             # UI mockups & banners
+│   │   └── image/                     # FLOXA brand logos
+│   ├── package.json
+│   └── tsconfig.json
+└── README.md
+
+--------------------------------------------------------------------------------
+4. DATABASE MODELS & SCHEMAS
+--------------------------------------------------------------------------------
+1. User (Collection: 'users')
+   - email: String (unique, lowercase, trim)
+   - passwordHash: String (bcrypt)
+   - name: String (e.g., 'Aravind V.', 'Sanjay Mehta')
+   - handle: String (unique, e.g., 'aravind_design')
+   - role: 'freelancer' | 'client' | 'dual' | 'admin'
+   - avatarUrl: String (Unsplash or custom image URL)
+   - isVerified: Boolean (default: false)
+   - timestamps: true
+
+2. TalentProfile (Collection: 'talent_profiles')
+   - userId: ObjectId ref 'User' (unique index)
+   - headline: String (e.g., 'Brand Identity & Visual Design Systems Lead')
+   - bio: String (Consultant methodology and craft)
+   - skills: [String] (e.g., ['Brand Identity', 'Design Systems', 'Figma', 'UI/UX Tokens'])
+   - hourlyRate: Number (default: 85)
+   - minimumProjectBudget: Number (default: 500)
+   - availabilityStatus: 'available' | 'busy' | 'not_looking'
+   - completedContractsCount: Number (auto-incremented on contract completion)
+   - escrowVolumeEarned: Number (sum of released direct payments)
+   - ratingAverage: Number (default: 5.0)
+
+3. Brief (Collection: 'briefs')
+   - clientId: ObjectId ref 'User'
+   - title: String (e.g., 'Visual Identity & Design System for HealthTech AI')
+   - category: 'branding' | 'uiux' | 'webdev' | 'marketing'
+   - problemStatement: String (Detailed technical / business problem)
+   - targetAudience: String
+   - deliverablesRequired: [String]
+   - sliders: [{ key: String, leftLabel: String, rightLabel: String, value: Number }]
+   - budgetMin: Number, budgetMax: Number
+   - currency: String (default: 'USD')
+   - deadlineWeeks: Number
+   - status: 'open' | 'in_review' | 'assigned' | 'completed' | 'cancelled'
+   - proposalsCount: Number (counter)
+   - magicLinkToken: String (48-char random hex)
+
+4. Proposal (Collection: 'proposals')
+   - briefId: ObjectId ref 'Brief'
+   - freelancerId: ObjectId ref 'User'
+   - diagnosticAnswers: [{ question: String, answer: String }]
+   - strategicSliders: [{ key: String, value: Number }]
+   - proposedMilestones: [{
+       title: String,
+       description: String,
+       amount: Number,
+       deliveryDays: Number
+     }] (Auto-normalized: 40% Advance, 40% Mid, 20% Final)
+   - totalPrice: Number
+   - estimatedDays: Number
+   - status: 'pending' | 'accepted' | 'declined' | 'withdrawn'
+
+5. Contract (Collection: 'contracts')
+   - briefId: ObjectId ref 'Brief'
+   - proposalId: ObjectId ref 'Proposal'
+   - clientId: ObjectId ref 'User'
+   - freelancerId: ObjectId ref 'User'
+   - totalBudget: Number
+   - currency: String (default: 'USD')
+   - status: 'active' | 'completed' | 'disputed' | 'cancelled'
+   - msaAgreementSignedAt: Date
+   - clientSignature: String
+   - floxaDesignWorkspaceLinked: Boolean
+
+6. Milestone (Collection: 'milestones')
+   - contractId: ObjectId ref 'Contract'
+   - milestoneNumber: Number (1, 2, 3)
+   - title: String
+   - description: String
+   - amount: Number
+   - escrowState: 'awaiting_deposit' | 'held_in_escrow' | 'in_review' | 'released'
+   - paymentGatewayRef: String (e.g., 'DIRECT_PAY_ADVANCE_...' or 'DIRECT_PAY_MILESTONE_...')
+   - submissions: [{
+       fileUrls: [String],
+       notes: String,
+       submittedAt: Date
+     }]
+   - reviewDeadline: Date (7-day window)
+   - approvedAt: Date, releasedAt: Date
+
+7. SocialPost (Collection: 'social_posts')
+   - authorId: ObjectId ref 'User'
+   - caption: String
+   - mediaUrls: [String]
+   - mediaType: 'image' | 'video' | 'case_study'
+   - tags: [String]
+   - projectCategory: String
+   - likesCount: Number, commentsCount: Number
+   - likedBy: [ObjectId ref 'User']
+
+8. ChatMessage (Collection: 'chat_messages')
+   - senderId: ObjectId ref 'User'
+   - recipientId: ObjectId ref 'User'
+   - text: String
+   - isRead: Boolean
+
+--------------------------------------------------------------------------------
+5. STEP-BY-STEP USER WORKFLOWS & INPUT/OUTPUT SPECIFICATIONS
+--------------------------------------------------------------------------------
+
+WORKFLOW 1: AUTHENTICATION & LOGIN
+- Seed Accounts (Pre-seeded in DB):
+  * Freelancer: email: freelancer@floxa.work | password: Password123!
+    - Name: Aravind V. | Handle: @aravind_design | Role: freelancer
+  * Client: email: client@floxa.work | password: Password123!
+    - Name: Sanjay Mehta | Handle: @sanjay_medx | Role: client
+  * Admin: email: admin@floxa.work | password: Password123!
+- Process:
+  * User inputs email and password, or clicks the 1-click quick-fill demo pills.
+  * Backend calls POST /api/auth/login.
+  * Receives JWT token and user payload. Stored in localStorage: `floxa_work_jwt`
+    and `floxa_work_user`.
+  * Redirects client to `client_dashboard` and freelancer to `briefs`.
+
+WORKFLOW 2: CLIENT POSTS A GUIDED BRIEF
+- Location: Topbar "Post Brief" button or Client Dashboard.
+- Modal: PostBriefModal.tsx
+- Inputs Required:
+  1. Brief Title (e.g., "Visual Identity for AI Clinical Platform")
+  2. Category: branding | uiux | webdev | marketing
+  3. Problem Statement (Detailed clinical/product friction)
+  4. Target Audience (e.g., "Clinical researchers and everyday patients")
+  5. Required Deliverables (e.g., "Logo Suite, Figma Tokens, Style Guide")
+  6. Strategic Slider: Speed/MVP (0%) vs. Craft/Pixel-Perfect (100%)
+  7. Budget Min ($1,800) & Budget Max ($2,800)
+  8. Estimated Timeline (Weeks)
+- Backend Action:
+  * POST /api/briefs with Authorization Bearer header.
+  * Status set to 'open', magicLinkToken generated.
+  * Dispatches toast: "Brief published to marketplace!".
+
+WORKFLOW 3: FREELANCER SUBMITS A MINI-DISCOVERY PITCH
+- Location: Explore Briefs (BriefsView.tsx) -> Click "Submit Pitch" on an open brief.
+- Modal: MiniDiscoveryModal.tsx
+- Inputs Required:
+  1. Problem Diagnosis: Diagnostic text explaining the solution (e.g., "Patient
+     intake requires strict compliance; proposing 3-archetype consumer tokens.")
+  2. Execution Direction Slider: e.g., 80% Consumer Friendly
+  3. Total Bid Price ($2,400)
+  4. Milestones: Auto-divided into 3 direct milestone splits:
+     - Milestone 1: 40% ($960) — Discovery & Concept Exploration (7 Days)
+     - Milestone 2: 40% ($960) — Production & Asset Engineering (7 Days)
+     - Milestone 3: 20% ($480) — Final Delivery & Handover (7 Days)
+- Backend Action:
+  * POST /api/proposals with briefId, diagnosticAnswers, proposedMilestones, totalPrice, estimatedDays.
+  * Proposal saved with status 'pending'.
+  * WebSocket emits `system_notification` to client.
+  * Freelancer redirected to "My Pitches" tab (`mini-discovery`).
+
+WORKFLOW 4: CLIENT ACCEPTS PROPOSAL & DISBURSES ADVANCE DIRECTLY
+- Location: Client Dashboard -> Tab: "Review Proposals".
+- The proposal card displays:
+  * Freelancer profile picture, @handle, and verified badge.
+  * Full problem diagnosis text.
+  * Execution direction slider visual preview.
+  * Bid summary: $2,400 Total, 3 Milestones, 21 Days.
+- Actions:
+  * Button 1: "Video Interview" (initiates live WebRTC call).
+  * Button 2: "Accept Proposal & Pay Advance ($960)".
+- Backend Action on Click:
+  * Calls POST /api/contracts with { proposalId, clientSignature }.
+  * Creates Contract in MongoDB (status: 'active').
+  * Inserts 3 Milestone documents:
+    - Milestone 1: escrowState: 'released', paymentGatewayRef: 'DIRECT_PAY_ADVANCE_<timestamp>', approvedAt, releasedAt.
+    - Milestone 2: escrowState: 'awaiting_deposit'.
+    - Milestone 3: escrowState: 'awaiting_deposit'.
+  * Proposal marked 'accepted', Brief marked 'assigned'.
+  * WebSocket notifies freelancer: "Proposal Accepted & Advance Paid ($960 directly)!".
+  * Client button changes to permanent badge: "Proposal Accepted & Advance Paid".
+
+WORKFLOW 5: ACTIVE CONTRACT WORKSPACE & MILESTONE LIFECYCLE
+- Location: "Milestones" / "Active Contract" (WorkspaceView.tsx).
+- Unified view for both Client and Freelancer.
+- Step Navigation:
+  * Milestone 1 ($960): Shows "Paid Directly", status: 'released'. Payment reference: DIRECT_PAY_ADVANCE_...
+  * Milestone 2 ($960):
+    - When Awaiting: Freelancer sees "Submit Milestone Deliverable" button.
+      Modal accepts deliverable bundle name and handover notes.
+      Submitting calls POST /api/milestones/:id/deliverable.
+      Moves milestone to `in_review` (7-Day Inspection Window).
+    - When In Review: Client sees "Approve Deliverable & Pay Milestone ($960)" button.
+      Client clicks button -> calls POST /api/milestones/:id/approve.
+      Backend sets `escrowState: 'released'`, sets paymentGatewayRef: DIRECT_PAY_MILESTONE_<timestamp>.
+      Updates MongoDB. State reloaded.
+      Permanently shows "Approved & Paid Directly" (green banner).
+      **State is permanently saved in MongoDB and never reverts on refresh.**
+  * Milestone 3 ($480): Final delivery handover follows identical lifecycle.
+    When Milestone 3 is approved, contract status moves to 'completed', and
+    freelancer's `completedContractsCount` increments in MongoDB.
+
+WORKFLOW 6: GLOBAL REAL-TIME WEBSOCKETS, TOASTS & WEBRTC CALLING
+- Root Level Socket (page.tsx):
+  * Instantiated as soon as user logs in. Never unmounts on tab switches.
+  * Presence heartbeat every 20 seconds.
+  * Tracks `onlineUsers` roster. Users stay **Online** on all tabs.
+- Telephone Ringing Signaling:
+  * User A clicks "Video Call" in ChatView.
+  * Socket emits: `{ type: 'call_user', callerId, callerName, callerAvatar, callType: 'video' }`.
+  * User B is on Workspace, Briefs, or Pitches tab:
+    - Ringtone synthesizer starts dual-frequency incoming chime (523Hz/659Hz).
+    - Frosted glass Incoming Call Modal renders globally over the page.
+    - Displays caller avatar with glowing ping halo, caller name, and Accept / Decline buttons.
+    - User B clicks "Accept":
+      * Ringtone stops.
+      * Socket sends `call_accepted`.
+      * App immediately transitions to `chat` tab.
+      * Live WebRTC video screening room opens with local/remote streams, mute mic, video toggle, timer, and End Call button.
+    - User B clicks "Decline":
+      * Ringtone stops.
+      * Socket sends `call_declined`.
+      * Caller receives notification "Call Declined".
+- Rich Floating Notification Toasts:
+  * When a message or event arrives while viewing another tab:
+    - Synthesizer plays pleasant 2-tone bell chime.
+    - Floating frosted glass toast appears at top-5 right-5:
+      * Sender circular avatar with blue indicator dot.
+      * Header: Sender Name + "Just now" + X close button.
+      * Body: Message text preview.
+      * Action Button: "Reply / View Chat" (takes directly to chat tab).
+      * Auto-dismisses in 6 seconds.
+  * Bell Icon in topbar increments unread badge.
+  * Clicking Bell opens notification dropdown listing all activity.
+
+WORKFLOW 7: PAYMENT LEDGER & AUDIT RECORDS
+- Location: "Payment Ledger" tab (PaymentLedgerView.tsx).
+- Dynamically queries active and completed contracts from MongoDB.
+- Summary Cards:
+  * Total Disbursed / Earned Directly ($).
+  * Under Inspection Window ($).
+  * Scheduled Milestones ($).
+- Audit Records Table:
+  * Columns: Milestone Number, Deliverable Title, Amount ($), Payment Reference (DIRECT_PAY_...), Billing Status, and Receipt Inspection action.
+
+WORKFLOW 8: SOCIAL PROOF-OF-WORK FEED
+- Location: "Proof Feed" tab (FeedView.tsx).
+- Category filtering: All, Branding, UI/UX, Webdev, Marketing.
+- Freelancers can click "Post Proof of Work" to upload a case study with title, tags, and banner image.
+- Liking posts updates count live in MongoDB (`POST /api/feed/:id/like`).
+- Clients can click "Hire" on any case study card to initiate a direct consultation.
+- Includes pagination via "Load More Proofs".
+
+WORKFLOW 9: MEMBER PROFILE & LIVE PERSISTENCE
+- Location: "Profile" tab (ProfileView.tsx).
+- Displays avatar with green "Online" pulsing badge, name, handle, role, headline, bio, and skills tags.
+- Dynamic DB Stats:
+  * Active Contracts Count
+  * Completed Gigs Count
+  * Direct Volume ($)
+  * Client Rating (5.0 / 5)
+- "Edit Profile" Button opens live edit modal:
+  * Updates Full Name, Handle, Avatar URL, Headline, Bio, Skills, and Hourly Rate.
+  * Calls `PUT /api/users/profile`.
+  * Saves to MongoDB, updates localStorage, and dispatches toast.
+
+WORKFLOW 10: RESPONSIVE DESIGN & MOBILE DOWN NAVIGATION
+- Desktop (> 1024px):
+  * Left glassy sticky sidebar with brand header, workspace navigation, collaboration, account items, and user chip with green online indicator.
+  * Topbar with search bar (Ctrl+K), role dropdown, action button, bell notification dropdown, and sign out.
+- Mobile / Tablet (<= 1024px):
+  * Desktop sidebar hidden off-canvas (-translate-x-full).
+  * Mobile slide-over drawer triggered by topbar hamburger icon.
+  * Topbar shows mobile brand logo, collapsible search icon, action button, bell icon, and logout.
+  * **Floating Glass Down Navigation Bar (`.mobile-down-nav`)**:
+    Pinned at bottom (`fixed bottom-0 inset-x-0 z-40 lg:hidden`).
+    Items for Client: Bids, Briefs, Elevated Center "+ Post" Button, Milestones, Messages.
+    Items for Freelancer: Explore, Feed, Elevated Center "Pitches" Button, Contract, Messages.
+    Unread message badges dynamically pulse over the Messages icon.
+
+--------------------------------------------------------------------------------
+6. COMPLETE REST API SPECIFICATIONS
+--------------------------------------------------------------------------------
+Base URL: http://localhost:5001/api
+
+AUTH:
+- POST /auth/register
+  Body: { email, password, name, handle, role: 'freelancer'|'client'|'dual' }
+  Response: { message, token, user }
+- POST /auth/login
+  Body: { email, password }
+  Response: { message, token, user }
+- GET /auth/me (Headers: Authorization: Bearer <token>)
+  Response: { user }
+
+USER PROFILE:
+- GET /users/profile (Headers: Authorization: Bearer <token>)
+  Response: { user, profile, stats: { activeContractsCount, completedContractsCount, totalVolume, ratingAverage } }
+- PUT /users/profile (Headers: Authorization: Bearer <token>)
+  Body: { name, handle, avatarUrl, headline, bio, skills, hourlyRate, minimumProjectBudget, availabilityStatus }
+  Response: { message, user, profile }
+
+BRIEFS:
+- GET /briefs?category=...&clientId=...&page=1&limit=20
+  Response: { briefs: [...], pagination: { page, limit, total } }
+- POST /briefs (Headers: Authorization: Bearer <token>)
+  Body: { title, category, problemStatement, targetAudience, deliverablesRequired, budgetMin, budgetMax, deadlineWeeks }
+  Response: { brief }
+- GET /briefs/:idOrToken
+  Response: { brief }
+
+PROPOSALS:
+- POST /proposals (Headers: Authorization: Bearer <token>)
+  Body: { briefId, diagnosticAnswers, strategicSliders, proposedMilestones, totalPrice, estimatedDays }
+  Response: { proposal }
+- GET /proposals/me (Headers: Authorization: Bearer <token>)
+  Response: { proposals: [...] }
+- GET /briefs/:briefId/proposals (Headers: Authorization: Bearer <token>)
+  Response: { proposals: [...] }
+
+CONTRACTS & DIRECT MILESTONE BILLING:
+- POST /contracts (Headers: Authorization: Bearer <token>)
+  Body: { proposalId, clientSignature }
+  Response: { contract, milestones, message }
+- GET /contracts/active (Headers: Authorization: Bearer <token>)
+  Response: { contract, milestones }
+- GET /contracts/me (Headers: Authorization: Bearer <token>)
+  Response: { contracts, milestones }
+- GET /contracts/:contractId (Headers: Authorization: Bearer <token>)
+  Response: { contract, milestones }
+- POST /milestones/:milestoneId/deliverable (Headers: Authorization: Bearer <token>)
+  Body: { fileUrls: [String], notes: String }
+  Response: { message, milestone }
+- POST /milestones/:milestoneId/approve (Headers: Authorization: Bearer <token>)
+  Response: { message, milestone, allMilestonesReleased }
+
+SOCIAL FEED:
+- GET /feed?category=...&page=1&limit=20
+  Response: { posts: [...], pagination: { page, limit, total, totalPages } }
+- POST /feed (Headers: Authorization: Bearer <token>)
+  Body: { caption, mediaUrls, tags, projectCategory, caseStudyMetrics }
+  Response: { post }
+- POST /feed/:postId/like (Headers: Authorization: Bearer <token>)
+  Response: { likesCount, isLiked }
+
+CHAT:
+- GET /messages (Headers: Authorization: Bearer <token>)
+  Response: { messages: [...] }
+- POST /messages (Headers: Authorization: Bearer <token>)
+  Body: { text, recipientId }
+  Response: { message }
+
+--------------------------------------------------------------------------------
+7. WEBSOCKET PROTOCOL SPECIFICATIONS
+--------------------------------------------------------------------------------
+Endpoint: ws://localhost:5001/ws
+
+Messages Sent by Client:
+1. Join / Presence:
+   { "type": "join_room", "room": "project_general", "userId": "...", "userName": "...", "userRole": "...", "userAvatar": "..." }
+2. Chat Message:
+   { "type": "chat_message", "room": "project_general", "payload": { "id": "...", "senderId": "...", "senderName": "...", "text": "...", "createdAt": "..." } }
+3. Initiate Call:
+   { "type": "call_user", "room": "project_general", "callerId": "...", "callerName": "...", "callerAvatar": "...", "callType": "video"|"audio" }
+4. Accept Call:
+   { "type": "call_accepted", "room": "project_general", "callerId": "..." }
+5. Decline Call:
+   { "type": "call_declined", "room": "project_general", "callerId": "..." }
+6. End Call:
+   { "type": "call_ended", "room": "project_general" }
+
+Messages Broadcast by Server:
+1. Online Users:
+   { "type": "online_users", "users": [{ "userId": "...", "name": "...", "role": "...", "avatarUrl": "..." }] }
+2. New Chat Message:
+   { "type": "new_message", "payload": { "id": "...", "senderId": "...", "senderName": "...", "text": "...", "createdAt": "..." } }
+3. Incoming Call:
+   { "type": "call_user", "callerId": "...", "callerName": "...", "callerAvatar": "...", "callType": "video" }
+4. Call Signals:
+   { "type": "call_accepted" } | { "type": "call_declined" } | { "type": "call_ended" }
+5. System Notification:
+   { "type": "system_notification", "payload": { "id": "...", "title": "...", "message": "...", "senderName": "...", "type": "milestone"|"proposal", "tab": "workspace"|"mini-discovery" } }
+
+--------------------------------------------------------------------------------
+8. DESIGN SYSTEM & UI GUIDELINES
+--------------------------------------------------------------------------------
+- Palette:
+  * Background: Pure white with Daylight frosted glass overlays and light metallic waves
+  * Primary Accent: #0084ff (Electric Royal Blue, used on active pills, buttons, and badges)
+  * Secondary Accent: Sky blue (#e0f2fe background, #0284c7 text)
+  * Success / Online: Emerald green (#10b981 / #059669)
+  * Dark Accents: Slate 900 / 950 (#0f172a / #020617) for call rooms and pill buttons
+  * Typography: Inter / -apple-system, font weights 500/600/700/800
+- Rules:
+  * ZERO decorative emojis (no ✨, 💼, 🚀, ★). Use Lucide SVG icons exclusively.
+  * Rounded pill buttons and cards (rounded-full, rounded-2xl, rounded-3xl).
+  * Frosted glass: `backdrop-blur-xl bg-white/95 border border-slate-200/90 shadow-[0_16px_40px_rgba(0,132,255,0.08)]`.
+  * Mobile down-nav must always have clearance (`pb-24 lg:pb-8`) on the main container.
+
+================================================================================
+END OF MASTER PROMPT
+================================================================================
+

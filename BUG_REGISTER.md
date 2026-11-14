@@ -1,0 +1,21 @@
+# FLOXA Work — Bug Register & Defect Tracking
+
+**Date:** 2026-11-14  
+**Status:** Production Hardened & Verified  
+
+| Bug ID | Component / File | Severity | Description & Root Cause | Proposed Correction | Status | Verification |
+|---|---|---|---|---|---|---|
+| **BUG-001** | `frontend/components/auth/AuthScreen.tsx` | **Medium** | Demo account pills were previously hardcoded in login card without session validation. | Cleaned up auth flow; verifies real MongoDB credentials with bcrypt 12-round salt. | **Resolved** | Verified |
+| **BUG-002** | `backend/src/controllers/brief.controller.ts` | **High** | Brief attachments previously relied on raw strings instead of verified file references. | Integrated with new centralized `FileRecord` model and Multer upload pipeline. | **Resolved** | Verified |
+| **BUG-003** | `frontend/components/FeedView.tsx` | **Medium** | "Post Proof" modal previously asked for an image URL string rather than accepting actual file uploads. | Implemented direct file upload with `uploadFile()` API and disk storage. | **Resolved** | Verified |
+| **BUG-004** | `backend/src/websocket/socketServer.ts` | **High** | WebSocket connection was unauthenticated at handshake; any client could connect without credentials. | Added JWT token extraction & verification from `?token=` query during upgrade and on `auth` event. | **Resolved** | Verified |
+| **BUG-005** | `frontend/components/FloxaWorkShell.tsx` | **High** | Search bar and brand logo wrap collision occurred on tablet screens (768px-1024px). | Restructured topbar responsive grid with strict hidden/flex breakpoints and safe-area insets. | **Resolved** | Verified |
+| **BUG-006** | `backend/src/controllers/contract.controller.ts` | **Medium** | Milestone payments previously did not persist release status across page reloads. | Linked milestones to permanent MongoDB update `approveMilestoneAndReleaseEscrow` with audit timestamp. | **Resolved** | Verified |
+| **BUG-007** | `frontend/components/ChatView.tsx` | **High** | Chat messages supported text only; file and image upload attachments were missing. | Added attachment picker, file upload handler, and download preview links in chat bubbles. | **Resolved** | Verified |
+| **BUG-008** | `frontend/components/WorkspaceView.tsx` | **High** | Deliverable download button triggered an alert instead of initiating an authorized private file download. | Wired deliverable download to authenticated file streaming route `GET /api/files/:id/download`. | **Resolved** | Verified |
+| **BUG-009** | `frontend/app/globals.css` | **Medium** | Heavy glassmorphism classes with inline background blurs created rendering lag on low-power mobile devices. | Refactored to clean CSS variables, subtle borders, and solid/subtle frosted tokens without heavy filters. | **Resolved** | Verified |
+| **BUG-010** | `backend/src/app.ts` | **High** | Rate-limiting middleware and security headers were completely absent. | Added in-memory sliding-window rate limiters (auth + API) and security headers (XSS, HSTS, SAMEORIGIN). | **Resolved** | Verified |
+| **BUG-011** | `frontend/components/ProfileView.tsx` | **Medium** | Profile avatar was limited to basic URL string without local device file upload. | Added real image file upload with Multer integration and avatar persistence in MongoDB. | **Resolved** | Verified |
+| **BUG-012** | `backend/src/routes/index.ts` | **High** | No admin routes existed; admin users had no endpoints to manage disputes, verify users, or moderate content. | Created `/api/admin/` routes, `admin.controller.ts`, and frontend `<AdminPortal />` component. | **Resolved** | Verified |
+| **BUG-013** | `frontend/components/MiniDiscoveryModal.tsx` | **Critical** | `Unauthorized: Missing or malformed token` shown when freelancer submitted pitch without valid token in localStorage. | Added proactive `getAuthToken()` validation guard and clear user feedback before submitting proposal. | **Resolved** | Verified |
+| **BUG-014** | `backend/src/models/Proposal.model.ts` | **Critical** | `Proposal validation failed: proposedMilestones.0.deliveryDays: Path deliveryDays is required`. | Added schema default `deliveryDays: 7` in `Proposal.model.ts` and normalized milestones in controller. | **Resolved** | Verified |
