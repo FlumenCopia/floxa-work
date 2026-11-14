@@ -11,9 +11,13 @@ echo "===================================================================="
 echo "  FLOXA WORK — SAFE MONGODB 7.0 INSTALLATION (SHARED VPS SAFE)"
 echo "===================================================================="
 
-# Check if MongoDB is already installed
+# Check if MongoDB is already installed and running
 if systemctl is-active --quiet mongod 2>/dev/null; then
-    echo "[INFO] MongoDB is already installed and running. Preserving existing instance."
+    echo "[INFO] MongoDB is already installed and running. Preserving existing instance without restart."
+    echo "[INFO] Verifying localhost port 27017..."
+    if ss -tulpn | grep -q ":27017 "; then
+        echo "[OK] MongoDB is listening on port 27017."
+    fi
 else
     echo "[1/4] Installing MongoDB 7.0 Community Server..."
     curl -fsSL https://www.mongodb.org/static/pgp/server-7.0.asc | \
@@ -25,25 +29,25 @@ else
 
     apt-get update -y
     apt-get install -y mongodb-org mongodb-org-tools
-fi
 
-# Hardening /etc/mongod.conf (127.0.0.1 ONLY, WiredTiger cache limit 1GB)
-echo "[2/4] Verifying localhost binding and cache limits in /etc/mongod.conf..."
-sed -i 's/bindIp: .*/bindIp: 127.0.0.1/' /etc/mongod.conf
+    # Hardening /etc/mongod.conf (127.0.0.1 ONLY, WiredTiger cache limit 1GB)
+    echo "[2/4] Verifying localhost binding and cache limits in /etc/mongod.conf..."
+    sed -i 's/bindIp: .*/bindIp: 127.0.0.1/' /etc/mongod.conf
 
-# Check cache limit to prevent memory contention with MySQL/PHP
-if ! grep -q "cacheSizeGB" /etc/mongod.conf; then
-    cat << 'EOF' >> /etc/mongod.conf
+    # Check cache limit to prevent memory contention with MySQL/PHP
+    if ! grep -q "cacheSizeGB" /etc/mongod.conf; then
+        cat << 'EOF' >> /etc/mongod.conf
 
 storage:
   wiredTiger:
     engineConfig:
       cacheSizeGB: 1
 EOF
-fi
+    fi
 
-systemctl enable mongod
-systemctl restart mongod
+    systemctl enable mongod
+    systemctl restart mongod
+fi
 
 # Prompt operator to create isolated user
 echo "[3/4] Ready to create dedicated user 'floxa_work_app_user' for 'floxa_work_prod'..."

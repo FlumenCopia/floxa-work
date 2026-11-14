@@ -1,0 +1,28 @@
+[Unit]
+Description=FLOXA Work Backend API & WebSocket Engine (CloudPanel)
+After=network.target mongod.service
+Wants=mongod.service
+
+[Service]
+Type=simple
+User=floxa
+Group=floxa
+WorkingDirectory=/home/floxa/htdocs/floxa-work/backend
+EnvironmentFile=/etc/floxa/backend.env
+ExecStart=/usr/bin/node dist/server.js
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=floxa-backend
+
+# Security Sandboxing & Hardening
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=false
+ReadWritePaths=/home/floxa/private_vault /home/floxa/htdocs/floxa-work/backend
+PrivateTmp=true
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

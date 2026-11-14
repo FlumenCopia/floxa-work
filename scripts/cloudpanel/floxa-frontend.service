@@ -1,0 +1,27 @@
+[Unit]
+Description=FLOXA Work Next.js 16 Production Frontend (CloudPanel)
+After=network.target floxa-backend.service
+
+[Service]
+Type=simple
+User=floxa
+Group=floxa
+WorkingDirectory=/home/floxa/htdocs/floxa-work/frontend
+EnvironmentFile=/etc/floxa/frontend.env
+ExecStart=/usr/bin/npm run start -- -p 3001 -H 127.0.0.1
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=floxa-frontend
+
+# Security Sandboxing & Hardening
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=false
+ReadWritePaths=/home/floxa/htdocs/floxa-work/frontend
+PrivateTmp=true
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

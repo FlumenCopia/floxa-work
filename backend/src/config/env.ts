@@ -18,6 +18,7 @@ const INSECURE_FALLBACKS = new Set([
 
 const rawAccessSecret = process.env.JWT_ACCESS_SECRET || (isProduction ? '' : 'floxa_work_default_access_secret_key');
 const rawRefreshSecret = process.env.JWT_REFRESH_SECRET || (isProduction ? '' : 'floxa_work_default_refresh_secret_key');
+const rawDatabaseUrl = process.env.DATABASE_URL || process.env.MONGODB_URI || '';
 
 // Production Fail-Fast Validation
 if (isProduction) {
@@ -31,8 +32,8 @@ if (isProduction) {
     missingSecrets.push('JWT_REFRESH_SECRET (must be unique, cryptographically random, min 32 chars)');
   }
 
-  if (!process.env.DATABASE_URL) {
-    missingSecrets.push('DATABASE_URL');
+  if (!rawDatabaseUrl) {
+    missingSecrets.push('DATABASE_URL or MONGODB_URI');
   }
 
   if (missingSecrets.length > 0) {
@@ -52,7 +53,7 @@ export const ENV = {
   TRUST_PROXY: process.env.TRUST_PROXY === '1' || process.env.TRUST_PROXY === 'true',
   
   // Database Pool & Timeout Settings
-  DATABASE_URL: process.env.DATABASE_URL || 'mongodb://127.0.0.1:27017/floxa_work_db',
+  DATABASE_URL: rawDatabaseUrl || 'mongodb://127.0.0.1:27017/floxa_work_db',
   DB_MAX_POOL_SIZE: parseInt(process.env.DB_MAX_POOL_SIZE || '25', 10), // Lean pool size protects shared MongoDB Atlas connection limits
   DB_MIN_POOL_SIZE: parseInt(process.env.DB_MIN_POOL_SIZE || '2', 10),
   DB_SERVER_SELECTION_TIMEOUT_MS: parseInt(process.env.DB_SERVER_SELECTION_TIMEOUT_MS || '5000', 10),

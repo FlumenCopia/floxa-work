@@ -2,8 +2,8 @@
 
 **Management Panel:** CloudPanel (`https://89.116.121.25:8443`)  
 **Target User:** `floxa`  
-**Site 1 (Frontend):** `app.floxa.work` -> Reverse Proxy to `http://127.0.0.1:3001`  
-**Site 2 (Backend & WebSockets):** `api.floxa.work` -> Reverse Proxy to `http://127.0.0.1:5001`  
+**Site 1 (Frontend):** `floxa.flumenx.in` (or `work.flumenx.in`) -> Reverse Proxy to `http://127.0.0.1:3001`  
+**Site 2 (Backend & WebSockets):** `api-floxa.flumenx.in` (or `floxa-api.flumenx.in`) -> Reverse Proxy to `http://127.0.0.1:5001`  
 
 ---
 
@@ -11,10 +11,10 @@
 
 To deploy FLOXA Work without modifying global server configurations, use CloudPanel's native UI:
 
-### Step 1: Add Reverse Proxy Site for Backend (`api.floxa.work`)
+### Step 1: Add Reverse Proxy Site for Backend (`api-floxa.flumenx.in`)
 1. Log in to CloudPanel: `https://89.116.121.25:8443`.
 2. Click **Add Site** > **Create a Reverse Proxy Site** (or **Node.js Site**).
-3. **Domain Name:** `api.floxa.work`.
+3. **Domain Name:** `api-floxa.flumenx.in` (or `api.floxa.work`).
 4. **Site User:** Select existing user `floxa` (or let CloudPanel create it).
 5. **Reverse Proxy URL:** `http://127.0.0.1:5001`.
 6. Click **Create**.
@@ -23,9 +23,9 @@ To deploy FLOXA Work without modifying global server configurations, use CloudPa
 
 ---
 
-### Step 2: Add Reverse Proxy Site for Frontend (`app.floxa.work`)
+### Step 2: Add Reverse Proxy Site for Frontend (`floxa.flumenx.in`)
 1. In CloudPanel, click **Add Site** > **Create a Reverse Proxy Site**.
-2. **Domain Name:** `app.floxa.work`.
+2. **Domain Name:** `floxa.flumenx.in` (or `work.flumenx.in` or `app.floxa.work`).
 3. **Site User:** Select `floxa`.
 4. **Reverse Proxy URL:** `http://127.0.0.1:3001`.
 5. Click **Create**.
@@ -39,18 +39,18 @@ To deploy FLOXA Work without modifying global server configurations, use CloudPa
 ```text
 /home/floxa/
 ├── htdocs/
-│   ├── app.floxa.work/      # Managed by CloudPanel
-│   ├── api.floxa.work/      # Managed by CloudPanel
-│   └── floxa-work/          # Application Repository Clone
-│       ├── backend/         # Express API running on 127.0.0.1:5001
-│       └── frontend/        # Next.js running on 127.0.0.1:3001
-├── private_vault/           # Isolated Deliverables (chmod 700)
-├── backups/                 # Isolated Application Backups (chmod 700)
-└── logs/                    # Nginx Access and Error Logs
+│   ├── floxa.flumenx.in/         # Managed by CloudPanel
+│   ├── api-floxa.flumenx.in/     # Managed by CloudPanel
+│   └── floxa-work/               # Application Repository Clone
+│       ├── backend/              # Express API running on 127.0.0.1:5001
+│       └── frontend/             # Next.js running on 127.0.0.1:3001
+├── private_vault/                # Isolated Deliverables (chmod 700)
+├── backups/                      # Isolated Application Backups (chmod 700)
+└── logs/                         # Nginx Access and Error Logs
 ```
 
 ---
 
 ## 3. Zero Impact on Neighboring Sites
 
-CloudPanel automatically isolates site configurations in `/etc/nginx/sites-enabled/`. Changes to `floxa` virtual hosts only reload Nginx configuration (`nginx -s reload`), which is a zero-downtime, graceful worker reload that never drops active connections to other sites.
+CloudPanel automatically isolates site configurations in `/etc/nginx/sites-enabled/`. Changes to `floxa` virtual hosts only reload Nginx configuration (`nginx -s reload`), which is a zero-downtime, graceful worker reload that never drops active connections to other sites (`flumenx`, `rwen-interiors`, `susrutha`, `foresight`).

@@ -19,7 +19,16 @@ echo "[FLOXA BACKUP] Starting isolated backup at ${TIMESTAMP}..."
 
 # 1. Dump MongoDB floxa_work_prod only (never touch MySQL or other DBs)
 echo "[1/4] Dumping MongoDB database 'floxa_work_prod'..."
-mongodump --db floxa_work_prod --out "${BACKUP_DIR}/mongo_dump" --quiet
+MONGODB_URI=""
+if [ -f /etc/floxa/backend.env ]; then
+    MONGODB_URI=$(grep -E '^MONGODB_URI=' /etc/floxa/backend.env | cut -d'=' -f2- || true)
+fi
+
+if [ -n "${MONGODB_URI}" ]; then
+    mongodump --uri="${MONGODB_URI}" --out "${BACKUP_DIR}/mongo_dump" --quiet
+else
+    mongodump --db floxa_work_prod --out "${BACKUP_DIR}/mongo_dump" --quiet
+fi
 
 # 2. Archive Private Vault Deliverables
 echo "[2/4] Archiving private deliverable vault..."

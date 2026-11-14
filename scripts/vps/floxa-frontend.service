@@ -18,7 +18,8 @@ SyslogIdentifier=floxa-frontend
 # Security Sandboxing & Hardening
 NoNewPrivileges=true
 ProtectSystem=full
-ProtectHome=true
+ProtectHome=false
+ReadWritePaths=/var/www/floxa-work/frontend
 PrivateTmp=true
 LimitNOFILE=65535
 

@@ -8,6 +8,8 @@
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 echo "===================================================================="
 echo "  FLOXA WORK — CLOUDPANEL SAFE DEPLOYMENT RUNNER"
 echo "  Target User: floxa | Isolation Root: /home/floxa/"
@@ -54,10 +56,11 @@ if [ ! -f /etc/floxa/backend.env ]; then
     cat << 'EOF' > /etc/floxa/backend.env
 NODE_ENV=production
 PORT=5001
+DATABASE_URL=mongodb://floxa_work_app_user:REPLACE_WITH_STRONG_PASSWORD@127.0.0.1:27017/floxa_work_prod?authSource=floxa_work_prod
 MONGODB_URI=mongodb://floxa_work_app_user:REPLACE_WITH_STRONG_PASSWORD@127.0.0.1:27017/floxa_work_prod?authSource=floxa_work_prod
 JWT_ACCESS_SECRET=REPLACE_WITH_64_CHAR_HEX
 JWT_REFRESH_SECRET=REPLACE_WITH_64_CHAR_HEX
-CORS_ORIGIN=https://app.floxa.work
+CORS_ORIGIN=https://floxa.flumenx.in,https://work.flumenx.in,https://app.floxa.work
 TRUST_PROXY=true
 STORAGE_PROVIDER=local
 STORAGE_LOCAL_ROOT=/home/floxa/private_vault
@@ -70,8 +73,8 @@ if [ ! -f /etc/floxa/frontend.env ]; then
     cat << 'EOF' > /etc/floxa/frontend.env
 NODE_ENV=production
 PORT=3001
-NEXT_PUBLIC_API_URL=https://api.floxa.work/api
-NEXT_PUBLIC_WS_URL=wss://api.floxa.work/ws
+NEXT_PUBLIC_API_URL=https://api-floxa.flumenx.in/api
+NEXT_PUBLIC_WS_URL=wss://api-floxa.flumenx.in/ws
 EOF
 fi
 
@@ -97,8 +100,18 @@ fi
 
 # 6. Service Units Registration
 echo "[6/6] Registering isolated systemd units..."
-cp /var/www/floxa-work/scripts/vps/floxa-backend.service /etc/systemd/system/floxa-backend.service 2>/dev/null || true
-cp /var/www/floxa-work/scripts/vps/floxa-frontend.service /etc/systemd/system/floxa-frontend.service 2>/dev/null || true
+if [ -f "${SCRIPT_DIR}/floxa-backend.service" ]; then
+    cp "${SCRIPT_DIR}/floxa-backend.service" /etc/systemd/system/floxa-backend.service
+elif [ -f "${DEPLOY_ROOT}/scripts/cloudpanel/floxa-backend.service" ]; then
+    cp "${DEPLOY_ROOT}/scripts/cloudpanel/floxa-backend.service" /etc/systemd/system/floxa-backend.service
+fi
+
+if [ -f "${SCRIPT_DIR}/floxa-frontend.service" ]; then
+    cp "${SCRIPT_DIR}/floxa-frontend.service" /etc/systemd/system/floxa-frontend.service
+elif [ -f "${DEPLOY_ROOT}/scripts/cloudpanel/floxa-frontend.service" ]; then
+    cp "${DEPLOY_ROOT}/scripts/cloudpanel/floxa-frontend.service" /etc/systemd/system/floxa-frontend.service
+fi
+
 systemctl daemon-reload
 
 echo "===================================================================="
