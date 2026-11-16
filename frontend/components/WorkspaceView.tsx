@@ -35,8 +35,55 @@ import {
   Scale,
   Star,
   AlertOctagon,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency';
+
+const IMAGE_EXTENSIONS = /\.(png|jpe?g|webp|gif|svg|bmp)(\?.*)?$/i;
+
+function renderChatMessage(content: string, isSelf: boolean) {
+  if (!content) return null;
+  const pattern = /(!?\[(?:File:\s*)?([^\]]+)\]\((https?:\/\/[^\s\)]+|\/[^\s\)]+)\))/gi;
+  const match = pattern.exec(content);
+  if (!match) {
+    return <span>{content}</span>;
+  }
+
+  const name = match[2].trim();
+  let url = match[3].trim();
+  const isImage = IMAGE_EXTENSIONS.test(name) || IMAGE_EXTENSIONS.test(url.split('?')[0]);
+
+  if (isImage) {
+    let previewUrl = url;
+    if (previewUrl.includes('/download')) {
+      previewUrl = previewUrl.replace(/\/download(\?.*)?$/, '/view$1');
+    }
+    return (
+      <div className="space-y-1.5 max-w-xs">
+        <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-xl border border-black/10 bg-black/5 hover:opacity-95 transition-opacity">
+          <img src={previewUrl} alt={name} className="w-full max-h-48 object-cover rounded-xl" />
+        </a>
+        <div className="flex items-center justify-between text-[10px] opacity-80 px-1">
+          <span className="truncate">{name}</span>
+          <a href={url} download={name} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-0.5 ml-2 shrink-0">
+            <Download size={10} />
+            <span>Save</span>
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex items-center gap-2 p-2 rounded-xl border max-w-xs ${isSelf ? 'bg-white/20 border-white/30 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'}`}>
+      <FileText size={16} className="shrink-0" />
+      <div className="min-w-0 flex-1 text-[11px] font-medium truncate">{name}</div>
+      <a href={url} download={name} target="_blank" rel="noopener noreferrer" className="p-1 hover:opacity-75 transition-opacity">
+        <Download size={12} />
+      </a>
+    </div>
+  );
+}
 import {
   fetchActiveContract,
   fetchWorkspaceDetailsApi,
@@ -1187,7 +1234,7 @@ export const WorkspaceView: React.FC = () => {
                           : 'bg-white text-slate-800 border border-slate-200 rounded-bl-none shadow-sm'
                       }`}
                     >
-                      {msg.text}
+                      {renderChatMessage(msg.text, isSelf)}
                     </div>
                   </div>
                 );
@@ -1670,7 +1717,7 @@ export const WorkspaceView: React.FC = () => {
                         <span className="font-bold text-slate-800">{msg.senderId?.name || 'Participant'}</span>
                         <span className="text-slate-400 font-mono">{new Date(msg.createdAt).toLocaleTimeString()}</span>
                       </div>
-                      <p className="text-xs text-slate-700 leading-relaxed">{msg.text}</p>
+                      <div className="text-xs text-slate-700 leading-relaxed">{renderChatMessage(msg.text, false)}</div>
                     </div>
                   ))
                 )}

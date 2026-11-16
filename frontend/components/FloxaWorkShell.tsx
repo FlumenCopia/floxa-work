@@ -92,7 +92,7 @@ export const FloxaWorkShell: React.FC<FloxaWorkShellProps> = ({
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
   const isClient = currentUser.role === 'client';
-  const isAdmin = currentUser.role === 'admin' || Boolean((currentUser as any).adminRole);
+  const isAdmin = currentUser.role === 'admin';
 
   const handleNavClick = (tab: FloxaWorkTab) => {
     onChangeTab(tab);

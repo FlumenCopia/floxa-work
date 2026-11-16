@@ -82,7 +82,7 @@ export default function HomePage() {
 
   // Peer metadata defaults
   const isClient = currentUser?.role === 'client';
-  const isAdmin = currentUser?.role === 'admin' || Boolean((currentUser as any)?.adminRole);
+  const isAdmin = currentUser?.role === 'admin';
   const peerName = isClient ? 'Aravind V.' : 'Sanjay Mehta';
   const peerAvatar = isClient
     ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80'
@@ -96,7 +96,7 @@ export default function HomePage() {
       if (saved && token) {
         const parsed = JSON.parse(saved);
         setCurrentUser(parsed);
-        if (parsed.role === 'admin' || Boolean(parsed.adminRole)) {
+        if (parsed.role === 'admin') {
           setCurrentTab('admin');
         } else {
           setCurrentTab(parsed.role === 'client' ? 'client_dashboard' : 'briefs');
@@ -588,7 +588,7 @@ export default function HomePage() {
 
   const handleLoginSuccess = (user: AuthUser) => {
     setCurrentUser(user);
-    if (user.role === 'admin' || Boolean((user as any).adminRole)) {
+    if (user.role === 'admin') {
       setCurrentTab('admin');
     } else {
       setCurrentTab(user.role === 'client' ? 'client_dashboard' : 'briefs');

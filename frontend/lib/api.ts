@@ -45,6 +45,26 @@ export function getAuthUser(): any | null {
   }
 }
 
+async function safeJsonParse(res: Response, fallbackError = 'Request failed') {
+  const text = await res.text();
+  try {
+    const data = text ? JSON.parse(text) : {};
+    if (!res.ok) {
+      throw new Error(data.error || data.message || `${fallbackError} (${res.status})`);
+    }
+    return data;
+  } catch (err: any) {
+    if (!res.ok) {
+      throw new Error(
+        err.message?.includes('token') || err.message?.includes('JSON')
+          ? `${fallbackError}: Service response unavailable (${res.status})`
+          : err.message || fallbackError
+      );
+    }
+    return {};
+  }
+}
+
 // 1. Auth API
 export async function loginUser(email: string, password: string) {
   const res = await fetch(`${API_BASE}/auth/login`, {
@@ -52,8 +72,7 @@ export async function loginUser(email: string, password: string) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Login failed');
+  const data = await safeJsonParse(res, 'Login failed. Please check your credentials.');
   setAuthSession(data.token, data.user, data.refreshToken);
   return data;
 }
@@ -70,8 +89,7 @@ export async function registerUser(payload: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Registration failed');
+  const data = await safeJsonParse(res, 'Registration failed. Please check form inputs.');
   setAuthSession(data.token, data.user, data.refreshToken);
   return data;
 }
