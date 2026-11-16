@@ -35,3 +35,23 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
   }
 }
 
+export function optionalAuth(req: AuthenticatedRequest, res: Response, next: NextFunction): void {
+  const authHeader = req.headers.authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded = jwt.verify(token, ENV.JWT_ACCESS_SECRET) as {
+        id: string;
+        email: string;
+        role: string;
+        adminRole?: string;
+        name?: string;
+      };
+      req.user = decoded;
+    } catch {
+      // Ignore token validation failure in optional authentication
+    }
+  }
+  next();
+}
+

@@ -251,6 +251,14 @@ export async function downloadFile(
       });
     }
 
+    const isInlineRequested = req.query.view === '1' || req.query.inline === 'true';
+    if (isInlineRequested && fileDoc.mimeType) {
+      res.setHeader('Content-Type', fileDoc.mimeType);
+      res.setHeader('Content-Disposition', `inline; filename="${fileDoc.originalName}"`);
+      fs.createReadStream(fullPath).pipe(res);
+      return;
+    }
+
     res.download(fullPath, fileDoc.originalName);
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Download failed' });
@@ -262,8 +270,19 @@ export async function viewFile(
   res: Response
 ): Promise<void> {
   try {
-    const { filename } = req.params;
-    const fileDoc = await FileRecord.findOne({ filename });
+    const target = req.params.fileId || req.params.filename;
+    if (!target) {
+      res.status(400).json({ error: 'Missing file identifier' });
+      return;
+    }
+
+    let fileDoc = null;
+    if (target.match(/^[0-9a-fA-F]{24}$/)) {
+      fileDoc = await FileRecord.findById(target);
+    }
+    if (!fileDoc) {
+      fileDoc = await FileRecord.findOne({ filename: target });
+    }
 
     if (!fileDoc) {
       res.status(404).json({ error: 'File not found' });
@@ -276,7 +295,7 @@ export async function viewFile(
       return;
     }
 
-    res.setHeader('Content-Type', fileDoc.mimeType);
+    res.setHeader('Content-Type', fileDoc.mimeType || 'application/octet-stream');
     res.setHeader('Content-Disposition', `inline; filename="${fileDoc.originalName}"`);
     fs.createReadStream(fullPath).pipe(res);
   } catch (error: any) {

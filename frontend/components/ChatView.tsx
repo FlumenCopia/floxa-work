@@ -13,6 +13,12 @@ import {
   Sparkles,
   PhoneForwarded,
   Paperclip,
+  FileText,
+  Download,
+  ExternalLink,
+  Image as ImageIcon,
+  Maximize2,
+  X,
 } from 'lucide-react';
 import { uploadFile } from '@/lib/api';
 import { AuthUser } from './auth/AuthScreen';
@@ -42,6 +48,80 @@ interface ChatViewProps {
     callerName: string;
     callerAvatar?: string;
   } | null;
+}
+
+const IMAGE_EXTENSIONS = /\.(png|jpe?g|webp|gif|svg|bmp)(\?.*)?$/i;
+
+interface ParsedMessageSegment {
+  type: 'text' | 'image' | 'file';
+  text?: string;
+  url?: string;
+  name?: string;
+}
+
+function parseMessageSegments(content: string): ParsedMessageSegment[] {
+  if (!content) return [];
+  const segments: ParsedMessageSegment[] = [];
+
+  // Match: ![alt](url) or [File: name](url) or [name](url)
+  const pattern = /(!?\[(?:File:\s*)?([^\]]+)\]\((https?:\/\/[^\s\)]+|\/[^\s\)]+)\))/gi;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = pattern.exec(content)) !== null) {
+    const fullMatch = match[0];
+    const isExclamation = fullMatch.startsWith('!');
+    const name = match[2].trim();
+    let url = match[3].trim();
+    const matchIndex = match.index;
+
+    if (matchIndex > lastIndex) {
+      const textPart = content.substring(lastIndex, matchIndex);
+      if (textPart.trim()) {
+        segments.push({ type: 'text', text: textPart });
+      }
+    }
+
+    // Determine if it's an image
+    const isImage =
+      isExclamation ||
+      IMAGE_EXTENSIONS.test(name) ||
+      IMAGE_EXTENSIONS.test(url.split('?')[0]);
+
+    if (isImage) {
+      let previewUrl = url;
+      // Convert /download to /view for inline image stream if needed
+      if (previewUrl.includes('/download')) {
+        previewUrl = previewUrl.replace(/\/download(\?.*)?$/, '/view$1');
+      }
+      segments.push({
+        type: 'image',
+        name,
+        url: previewUrl,
+      });
+    } else {
+      segments.push({
+        type: 'file',
+        name,
+        url,
+      });
+    }
+
+    lastIndex = matchIndex + fullMatch.length;
+  }
+
+  if (lastIndex < content.length) {
+    const remainingText = content.substring(lastIndex);
+    if (remainingText.trim()) {
+      segments.push({ type: 'text', text: remainingText });
+    }
+  }
+
+  if (segments.length === 0) {
+    segments.push({ type: 'text', text: content });
+  }
+
+  return segments;
 }
 
 export const ChatView: React.FC<ChatViewProps> = ({
@@ -80,6 +160,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
   }, [messages]);
 
   const [isUploadingChatFile, setIsUploadingChatFile] = useState(false);
+  const [lightboxImage, setLightboxImage] = useState<{ url: string; name: string } | null>(null);
 
   const handleChatFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -87,12 +168,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
     setIsUploadingChatFile(true);
     try {
       const res = await uploadFile(file, 'attachment', true);
-      const fileLink = `[File: ${file.name}](${res.downloadUrl || res.accessUrl})`;
+      const isImg = file.type.startsWith('image/') || IMAGE_EXTENSIONS.test(file.name);
+      const viewUrl = res.accessUrl || res.downloadUrl;
+      const fileLink = isImg
+        ? `![${file.name}](${viewUrl})`
+        : `[File: ${file.name}](${res.downloadUrl || viewUrl})`;
       await onSendMessage(fileLink);
     } catch (err: any) {
       alert(err.message || 'File upload failed');
     } finally {
       setIsUploadingChatFile(false);
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -254,7 +340,129 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     : 'bg-white text-slate-800 rounded-bl-sm border border-slate-200/90 shadow-sm'
                 }`}
               >
-                {msg.text}
+                {(() => {
+                  const segments = parseMessageSegments(msg.text);
+                  return (
+                    <div className="space-y-2">
+                      {segments.map((seg, idx) => {
+                        if (seg.type === 'image') {
+                          return (
+                            <div
+                              key={idx}
+                              className="rounded-xl overflow-hidden border border-black/10 bg-black/5 shadow-sm max-w-[280px] sm:max-w-[340px]"
+                            >
+                              <div
+                                onClick={() =>
+                                  setLightboxImage({
+                                    url: seg.url!,
+                                    name: seg.name || 'Image attachment',
+                                  })
+                                }
+                                className="relative group cursor-pointer overflow-hidden bg-slate-900/10 flex items-center justify-center min-h-[140px] max-h-72"
+                              >
+                                <img
+                                  src={seg.url}
+                                  alt={seg.name || 'Chat attachment'}
+                                  className="w-full h-auto max-h-72 object-cover transition-transform duration-200 group-hover:scale-[1.03]"
+                                  loading="lazy"
+                                />
+                                <div className="absolute inset-0 bg-slate-950/0 group-hover:bg-slate-950/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                  <span className="px-3 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md text-white text-[11px] font-semibold flex items-center gap-1.5 shadow-lg">
+                                    <Maximize2 size={12} />
+                                    <span>Enlarge</span>
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div
+                                className={`px-2.5 py-1.5 flex items-center justify-between text-[11px] font-medium gap-2 ${
+                                  msg.isSelf
+                                    ? 'bg-black/15 text-white/90'
+                                    : 'bg-slate-50 text-slate-700 border-t border-slate-100'
+                                }`}
+                              >
+                                <span className="truncate flex items-center gap-1.5 min-w-0">
+                                  <ImageIcon size={13} className="shrink-0 opacity-80" />
+                                  <span className="truncate">{seg.name || 'Image.png'}</span>
+                                </span>
+                                <a
+                                  href={seg.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  download={seg.name}
+                                  className={`p-1 rounded shrink-0 transition-colors ${
+                                    msg.isSelf
+                                      ? 'hover:bg-white/20 text-white'
+                                      : 'hover:bg-slate-200 text-slate-600'
+                                  }`}
+                                  title="Download Image"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Download size={13} />
+                                </a>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (seg.type === 'file') {
+                          return (
+                            <div
+                              key={idx}
+                              className={`flex items-center gap-3 p-2.5 px-3 rounded-xl border max-w-sm ${
+                                msg.isSelf
+                                  ? 'bg-white/15 border-white/25 text-white'
+                                  : 'bg-slate-50 border-slate-200/90 text-slate-800 shadow-sm'
+                              }`}
+                            >
+                              <div
+                                className={`p-2 rounded-lg shrink-0 ${
+                                  msg.isSelf
+                                    ? 'bg-white/20 text-white'
+                                    : 'bg-[#0084ff]/10 text-[#0084ff]'
+                                }`}
+                              >
+                                <FileText size={18} />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-xs font-semibold truncate leading-tight">
+                                  {seg.name || 'Attached File'}
+                                </div>
+                                <div
+                                  className={`text-[10px] mt-0.5 ${
+                                    msg.isSelf ? 'text-white/80' : 'text-slate-400'
+                                  }`}
+                                >
+                                  File attachment
+                                </div>
+                              </div>
+                              <a
+                                href={seg.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                download={seg.name}
+                                className={`p-1.5 rounded-lg shrink-0 transition-colors ${
+                                  msg.isSelf
+                                    ? 'hover:bg-white/20 text-white'
+                                    : 'hover:bg-slate-200 text-slate-600'
+                                }`}
+                                title="Download File"
+                              >
+                                <Download size={14} />
+                              </a>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div key={idx} className="whitespace-pre-wrap break-words">
+                            {seg.text}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
@@ -508,6 +716,52 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 <PhoneOff size={15} />
                 <span>End Call</span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 9. Lightbox Modal for Full-Screen Image Viewing */}
+      {lightboxImage && (
+        <div
+          onClick={() => setLightboxImage(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in cursor-zoom-out"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative max-w-4xl max-h-[92vh] w-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl flex flex-col cursor-default animate-in zoom-in-95 duration-150"
+          >
+            {/* Header bar */}
+            <div className="px-4 py-3 bg-slate-950/90 border-b border-slate-800/80 flex items-center justify-between text-white">
+              <span className="text-xs font-semibold truncate max-w-md flex items-center gap-2">
+                <ImageIcon size={14} className="text-[#0084ff]" />
+                <span className="truncate">{lightboxImage.name}</span>
+              </span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={lightboxImage.url}
+                  download={lightboxImage.name}
+                  className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-300 hover:text-white transition-colors"
+                  title="Download Image"
+                >
+                  <Download size={16} />
+                </a>
+                <button
+                  onClick={() => setLightboxImage(null)}
+                  className="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
+                  title="Close"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+            {/* Image body */}
+            <div className="p-3 sm:p-6 flex items-center justify-center overflow-auto max-h-[calc(92vh-56px)] bg-black/40">
+              <img
+                src={lightboxImage.url}
+                alt={lightboxImage.name}
+                className="max-h-[80vh] w-auto max-w-full object-contain rounded-xl shadow-2xl"
+              />
             </div>
           </div>
         </div>

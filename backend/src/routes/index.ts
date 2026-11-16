@@ -127,7 +127,7 @@ import {
   unblockUser,
   getBlockedUsers,
 } from '../controllers/safety.controller.js';
-import { requireAuth } from '../middleware/auth.middleware.js';
+import { requireAuth, optionalAuth } from '../middleware/auth.middleware.js';
 import { authRateLimiter } from '../middleware/security.middleware.js';
 
 const router = Router();
@@ -248,8 +248,9 @@ router.post('/notifications/read-all', requireAuth, markAllNotificationsRead);
 
 // Centralized File Storage (Upload, Download, Inline View)
 router.post('/files/upload', requireAuth, uploadMiddleware.single('file'), uploadSingleFile);
-router.get('/files/:fileId/download', requireAuth, downloadFile);
-router.get('/files/:filename/view', viewFile);
+router.get('/files/:fileId/download', optionalAuth, downloadFile);
+router.get('/files/:fileId/view', optionalAuth, viewFile);
+router.get('/files/:filename/view', optionalAuth, viewFile);
 
 // Live Chat & Direct Consultation Messages
 router.get('/messages', requireAuth, getMessages);
