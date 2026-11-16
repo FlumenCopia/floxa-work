@@ -270,3 +270,4 @@ export function generateInvoicePdfBuffer(details: InvoiceDetails): Promise<Buffe
     }
   });
 }
+

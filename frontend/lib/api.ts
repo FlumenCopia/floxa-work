@@ -820,6 +820,13 @@ export async function searchFreelancersApi(params: {
   return data;
 }
 
+export async function fetchFreelancerDetailsApi(idOrHandle: string) {
+  const res = await fetch(`${API_BASE}/discovery/freelancers/${encodeURIComponent(idOrHandle)}`);
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to fetch specialist details');
+  return data;
+}
+
 export async function searchProjectsApi(params: {
   q?: string;
   category?: string;

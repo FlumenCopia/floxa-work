@@ -71,14 +71,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     setIsLoading(true);
     try {
       const data = await fetchUserProfile();
+      const isClientRole = (data?.user?.role || currentUser.role) === 'client';
       if (data) {
         setProfileData(data);
         setFormData({
           name: data.user?.name || currentUser.name,
           handle: data.user?.handle || currentUser.handle,
           avatarUrl: data.user?.avatarUrl || currentUser.avatarUrl,
-          headline: data.profile?.headline || 'Creative & Technical Consultant',
-          bio: data.profile?.bio || 'Passionate about delivering exceptional outcomes via discovery-first workflows.',
+          headline: data.profile?.headline || (isClientRole ? 'Verified Client & Project Sponsor' : 'Creative & Technical Consultant'),
+          bio: data.profile?.bio || (isClientRole ? 'Sponsoring mission-critical projects and hiring specialized talent.' : 'Passionate about delivering exceptional outcomes via discovery-first workflows.'),
           skills: Array.isArray(data.profile?.skills) ? data.profile.skills.join(', ') : '',
           hourlyRate: data.profile?.hourlyRate || 85,
           availabilityStatus: data.profile?.availabilityStatus || 'available',
@@ -129,6 +130,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   };
 
   const user = profileData?.user || currentUser;
+  const isClient = (user?.role || currentUser.role) === 'client';
   const profile = profileData?.profile || {};
   const stats = profileData?.stats || {
     activeContractsCount: 1,
@@ -179,13 +181,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 </span>
               </div>
 
-              <div className="text-xs text-slate-500 font-medium mt-0.5">
-                @{user.handle} â€¢ {user.email}
+              <div className="text-xs text-slate-500 font-medium mt-0.5 flex items-center gap-1.5">
+                <span>@{user.handle}</span>
+                <span>•</span>
+                <span>{user.email}</span>
               </div>
 
               <div className="text-xs font-semibold text-[#0084ff] mt-1 capitalize flex items-center gap-1.5">
-                <span>{user.role} Account</span>
-                {profile.hourlyRate ? <span>â€¢ ${profile.hourlyRate}/hr</span> : null}
+                <span>{isClient ? 'Verified Client Account' : `${user.role} Account`}</span>
+                {!isClient && profile.hourlyRate ? <span>• ${profile.hourlyRate}/hr</span> : null}
               </div>
             </div>
           </div>
@@ -204,7 +208,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           {profile.headline && (
             <div>
               <div className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">
-                Headline
+                {isClient ? 'Organization / Role' : 'Headline'}
               </div>
               <h3 className="text-sm font-bold text-slate-800 mt-0.5">
                 {profile.headline}
@@ -215,7 +219,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           {profile.bio && (
             <div>
               <div className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400">
-                Bio & Vision
+                {isClient ? 'Company Overview & Hiring Focus' : 'Bio & Vision'}
               </div>
               <p className="text-xs text-slate-600 leading-relaxed mt-0.5 bg-slate-50/80 p-3 rounded-xl border border-slate-200/80">
                 {profile.bio}
@@ -223,7 +227,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
           )}
 
-          {profile.skills && profile.skills.length > 0 && (
+          {!isClient && profile.skills && profile.skills.length > 0 && (
             <div>
               <div className="text-[10.5px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
                 Verified Skills & Craft
@@ -246,10 +250,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-2">
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
             <div className="text-lg font-bold text-slate-900 font-mono">
-              {stats.activeContractsCount || 1}
+              {stats.activeContractsCount || 0}
             </div>
             <div className="text-[10px] text-slate-500 uppercase font-semibold mt-0.5">
-              Active Contracts
+              {isClient ? 'Active Projects' : 'Active Contracts'}
             </div>
           </div>
 
@@ -258,16 +262,16 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               {stats.completedContractsCount || 0}
             </div>
             <div className="text-[10px] text-slate-500 uppercase font-semibold mt-0.5">
-              Completed Gigs
+              {isClient ? 'Completed Projects' : 'Completed Gigs'}
             </div>
           </div>
 
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
             <div className="text-lg font-bold text-[#0084ff] font-mono">
-              ${stats.totalVolume?.toLocaleString() || '960'}
+              ${stats.totalVolume?.toLocaleString() || '0'}
             </div>
             <div className="text-[10px] text-slate-500 uppercase font-semibold mt-0.5">
-              Direct Volume
+              {isClient ? 'Total Funded' : 'Direct Volume'}
             </div>
           </div>
 
@@ -277,7 +281,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <span>{stats.ratingAverage || '5.0'}</span>
             </div>
             <div className="text-[10px] text-slate-500 uppercase font-semibold mt-0.5">
-              Client Rating
+              {isClient ? 'Client Trust Score' : 'Specialist Rating'}
             </div>
           </div>
         </div>
@@ -438,51 +442,57 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Headline</label>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  {isClient ? 'Organization / Executive Role' : 'Headline'}
+                </label>
                 <input
                   type="text"
                   value={formData.headline}
                   onChange={(e) => setFormData({ ...formData, headline: e.target.value })}
                   className="w-full text-xs p-2.5 rounded-xl border border-slate-200 outline-none focus:border-[#0084ff]"
-                  placeholder="e.g. Brand Identity & Design Systems Architect"
+                  placeholder={isClient ? 'e.g. Founder & Managing Director at MedX' : 'e.g. Brand Identity & Design Systems Architect'}
                 />
               </div>
 
               <div>
-                <label className="text-xs font-semibold text-slate-700 block mb-1">Bio</label>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  {isClient ? 'Company Overview & Hiring Focus' : 'Bio & Methodology'}
+                </label>
                 <textarea
                   rows={3}
                   value={formData.bio}
                   onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                   className="w-full text-xs p-2.5 rounded-xl border border-slate-200 outline-none focus:border-[#0084ff] resize-none"
-                  placeholder="Tell clients about your methodology, experience, and discovery approach..."
+                  placeholder={isClient ? 'Tell specialists about your business, vision, and project requirements...' : 'Tell clients about your methodology, experience, and discovery approach...'}
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Skills (comma-separated)</label>
-                  <input
-                    type="text"
-                    value={formData.skills}
-                    onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 outline-none focus:border-[#0084ff]"
-                    placeholder="Brand Identity, Figma, UI/UX"
-                  />
-                </div>
+              {!isClient && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">Skills (comma-separated)</label>
+                    <input
+                      type="text"
+                      value={formData.skills}
+                      onChange={(e) => setFormData({ ...formData, skills: e.target.value })}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 outline-none focus:border-[#0084ff]"
+                      placeholder="Brand Identity, Figma, UI/UX"
+                    />
+                  </div>
 
-                <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">Hourly Rate ($)</label>
-                  <input
-                    type="number"
-                    value={formData.hourlyRate}
-                    onChange={(e) => setFormData({ ...formData, hourlyRate: Number(e.target.value) })}
-                    className="w-full text-xs p-2.5 rounded-xl border border-slate-200 outline-none focus:border-[#0084ff]"
-                    min={10}
-                    max={1000}
-                  />
+                  <div>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">Hourly Rate ($)</label>
+                    <input
+                      type="number"
+                      value={formData.hourlyRate}
+                      onChange={(e) => setFormData({ ...formData, hourlyRate: Number(e.target.value) })}
+                      className="w-full text-xs p-2.5 rounded-xl border border-slate-200 outline-none focus:border-[#0084ff]"
+                      min={10}
+                      max={1000}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
                 <button

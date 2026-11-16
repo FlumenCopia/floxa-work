@@ -21,7 +21,7 @@ interface AuthScreenProps {
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   const [isRegister, setIsRegister] = useState(false);
-  const [role, setRole] = useState<'client' | 'freelancer' | 'admin'>('client');
+  const [role, setRole] = useState<'client' | 'freelancer'>('client');
   const [email, setEmail] = useState('client@floxa.work');
   const [password, setPassword] = useState('Password123!');
   const [name, setName] = useState('');
@@ -29,13 +29,9 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSelectRole = (newRole: 'client' | 'freelancer' | 'admin') => {
+  const handleSelectRole = (newRole: 'client' | 'freelancer') => {
     setRole(newRole);
-    if (newRole === 'admin') {
-      setIsRegister(false);
-      setEmail('admin@floxa.work');
-      setPassword('Password123!');
-    } else if (!isRegister) {
+    if (!isRegister) {
       if (newRole === 'client') {
         setEmail('client@floxa.work');
         setPassword('Password123!');
@@ -59,11 +55,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       }
 
       if (isRegister) {
-        if (role === 'admin') {
-          setError('Administrator accounts cannot be registered publicly. Please contact platform operations.');
-          setIsLoading(false);
-          return;
-        }
         if (!name) {
           setError('Please enter your full name.');
           setIsLoading(false);
@@ -189,7 +180,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Client
+                Client Portal
               </button>
               <button
                 type="button"
@@ -200,18 +191,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Freelancer
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSelectRole('admin')}
-                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
-                  role === 'admin'
-                    ? 'bg-[#0084ff] text-white font-bold shadow-sm'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Admin
+                Freelancer Portal
               </button>
             </div>
 
@@ -223,8 +203,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
               <p className="text-xs text-slate-500 mt-0.5">
                 {isRegister
                   ? `Register as a ${role === 'client' ? 'Client' : 'Freelancer'}`
-                  : role === 'admin'
-                  ? 'Sign in to Platform Operations & Governance'
                   : `Sign in as a ${role === 'client' ? 'Client' : 'Freelancer'}`}
               </p>
             </div>
@@ -314,19 +292,17 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
               </button>
 
               {/* Toggle Register / Sign In */}
-              {role !== 'admin' && (
-                <div className="text-center pt-3 border-t border-slate-100 mt-4">
-                  <button
-                    type="button"
-                    onClick={() => setIsRegister(!isRegister)}
-                    className="text-xs text-slate-500 hover:text-[#0084ff] font-medium transition-colors cursor-pointer"
-                  >
-                    {isRegister
-                      ? 'Already have an account? Sign In'
-                      : "Don't have an account? Create one"}
-                  </button>
-                </div>
-              )}
+              <div className="text-center pt-3 border-t border-slate-100 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsRegister(!isRegister)}
+                  className="text-xs text-slate-500 hover:text-[#0084ff] font-medium transition-colors cursor-pointer"
+                >
+                  {isRegister
+                    ? 'Already have an account? Sign In'
+                    : "Don't have an account? Create one"}
+                </button>
+              </div>
             </form>
           </div>
         </div>
