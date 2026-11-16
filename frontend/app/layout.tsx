@@ -5,6 +5,16 @@ export const metadata: Metadata = {
   title: 'FLOXA Work — Discovery-First Freelance Marketplace & Social Proof Network',
   description:
     'Where high-tier consultants bid with a Mini-Discovery, clients post guided 4-frame briefs, and escrow guarantees payment.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'FLOXA Work',
+  },
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+  },
 };
 
 export const viewport: Viewport = {

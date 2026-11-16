@@ -60,6 +60,8 @@ import {
   getActiveContract,
   getMyContracts,
   getContractDetails,
+  downloadMilestoneInvoice,
+  orderInstantPackage,
 } from '../controllers/contract.controller.js';
 import {
   getWorkspaceDetails,
@@ -211,6 +213,7 @@ router.put('/invitations/:id/cancel', requireAuth, cancelInvitation);
 
 // Contracts & Direct Milestone Billing (0% Platform Custody)
 router.post('/contracts', requireAuth, acceptProposalAndCreateContract);
+router.post('/contracts/instant-package', requireAuth, orderInstantPackage);
 router.post('/proposals/:proposalId/accept', requireAuth, (req, res) => {
   req.body.proposalId = req.params.proposalId;
   acceptProposalAndCreateContract(req, res);
@@ -218,6 +221,8 @@ router.post('/proposals/:proposalId/accept', requireAuth, (req, res) => {
 router.get('/contracts/active', requireAuth, getActiveContract);
 router.get('/contracts/me', requireAuth, getMyContracts);
 router.get('/contracts/:contractId', requireAuth, getContractDetails);
+router.get('/contracts/:contractId/invoice', requireAuth, downloadMilestoneInvoice);
+router.get('/contracts/:contractId/milestones/:milestoneId/invoice', requireAuth, downloadMilestoneInvoice);
 router.post('/milestones/:milestoneId/deliverable', requireAuth, submitMilestoneDeliverable);
 router.post('/milestones/:milestoneId/submissions', requireAuth, submitMilestoneDeliverable);
 router.get('/milestones/:milestoneId/submissions', requireAuth, getMilestoneSubmissions);

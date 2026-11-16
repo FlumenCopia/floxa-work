@@ -561,6 +561,54 @@ export async function fetchMyContracts() {
   return data;
 }
 
+export async function orderInstantPackageApi(payload: {
+  freelancerId: string;
+  packageTitle: string;
+  price: number;
+  deliveryDays: number;
+  deliverables: string[];
+  briefNote?: string;
+}) {
+  const token = getAuthToken();
+  const res = await fetch(`${API_BASE}/contracts/instant-package`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to place instant package order');
+  return data;
+}
+
+export async function downloadMilestoneInvoiceApi(contractId: string, milestoneId?: string) {
+  const token = getAuthToken();
+  const url = milestoneId
+    ? `${API_BASE}/contracts/${contractId}/milestones/${milestoneId}/invoice`
+    : `${API_BASE}/contracts/${contractId}/invoice`;
+
+  const res = await fetch(url, {
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+  if (!res.ok) {
+    const errorText = await res.text();
+    throw new Error(errorText || 'Failed to download invoice');
+  }
+  const blob = await res.blob();
+  const blobUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = `FLOXA-Tax-Invoice-${contractId.slice(-6).toUpperCase()}${milestoneId ? `-M${milestoneId}` : ''}.pdf`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(blobUrl);
+}
+
 export async function approveMilestoneDeliverable(milestoneId: string) {
   const token = getAuthToken();
   const res = await fetch(`${API_BASE}/milestones/${milestoneId}/approve`, {

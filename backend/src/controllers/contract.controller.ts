@@ -9,8 +9,10 @@ import { PaymentRecord } from '../models/PaymentRecord.model.js';
 import { AuditLog } from '../models/AuditLog.model.js';
 import { ContractActivity } from '../models/ContractActivity.model.js';
 import { Notification } from '../models/Notification.model.js';
+import { User } from '../models/User.model.js';
 import { AuthenticatedRequest } from '../middleware/auth.middleware.js';
 import { broadcastSystemNotification } from '../websocket/socketServer.js';
+import { generateInvoicePdfBuffer } from '../services/invoice/invoice.service.js';
 
 export async function acceptProposalAndCreateContract(
   req: AuthenticatedRequest,
@@ -830,5 +832,211 @@ export async function getContractDetails(
     res.json({ contract, milestones, paymentRecords });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Failed to fetch contract details' });
+  }
+}
+
+export async function downloadMilestoneInvoice(
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const { contractId, milestoneId } = req.params;
+    if (!contractId || !mongoose.Types.ObjectId.isValid(contractId)) {
+      res.status(400).json({ error: 'Valid contractId is required' });
+      return;
+    }
+
+    const contract = await Contract.findById(contractId)
+      .populate('briefId', 'title')
+      .populate('clientId', 'name email handle')
+      .populate('freelancerId', 'name email handle');
+
+    if (!contract) {
+      res.status(404).json({ error: 'Contract not found' });
+      return;
+    }
+
+    const client: any = contract.clientId;
+    const freelancer: any = contract.freelancerId;
+    const brief: any = contract.briefId;
+
+    const isClient = client?._id?.toString() === req.user.id.toString();
+    const isFreelancer = freelancer?._id?.toString() === req.user.id.toString();
+    const isAdmin = req.user.role === 'admin' || (req.user as any).adminRole;
+
+    if (!isClient && !isFreelancer && !isAdmin) {
+      res.status(403).json({ error: 'Forbidden: You cannot download an invoice for this contract.' });
+      return;
+    }
+
+    let milestone: any = null;
+    if (milestoneId) {
+      if (mongoose.Types.ObjectId.isValid(milestoneId)) {
+        milestone = await Milestone.findById(milestoneId);
+      } else if (!isNaN(Number(milestoneId))) {
+        milestone = await Milestone.findOne({ contractId: contract._id, milestoneNumber: Number(milestoneId) });
+      }
+    }
+
+    if (!milestone) {
+      milestone = await Milestone.findOne({ contractId: contract._id }).sort({ milestoneNumber: 1 });
+    }
+
+    const mNumber = milestone ? milestone.milestoneNumber : 1;
+    const invoiceNumber = `INV-${contract._id.toString().slice(-6).toUpperCase()}-M${mNumber}`;
+    const issueDate = milestone?.approvedAt || milestone?.updatedAt || contract.createdAt || new Date();
+    const amount = milestone ? milestone.amount : contract.totalBudget;
+
+    const deliverables = milestone?.deliverables && milestone.deliverables.length > 0
+      ? milestone.deliverables.map((d: any) => typeof d === 'string' ? d : d.title || d.description)
+      : [milestone?.title || 'Scope Deliverable Acceptance'];
+
+    const pdfBuffer = await generateInvoicePdfBuffer({
+      invoiceNumber,
+      issueDate,
+      contractTitle: brief?.title || 'Professional Freelance Agreement',
+      contractId: contract._id.toString(),
+      milestoneTitle: milestone?.title || `Milestone ${mNumber} Settlement`,
+      milestoneIndex: mNumber,
+      clientName: client?.name || 'Verified Client',
+      clientEmail: client?.email || 'client@floxa.work',
+      freelancerName: freelancer?.name || 'Verified Specialist',
+      freelancerEmail: freelancer?.email || 'freelancer@floxa.work',
+      amount,
+      currency: contract.currency || 'USD',
+      deliverables,
+      status: milestone?.escrowState === 'released' || milestone?.paymentStatus === 'acknowledged_by_freelancer'
+        ? 'Settled & Verified'
+        : 'Milestone Executed'
+    });
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${invoiceNumber}.pdf"`);
+    res.send(pdfBuffer);
+  } catch (error: any) {
+    console.error('Invoice error:', error);
+    res.status(500).json({ error: error.message || 'Failed to generate tax invoice' });
+  }
+}
+
+export async function orderInstantPackage(
+  req: AuthenticatedRequest,
+  res: Response
+): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    if (req.user.role !== 'client' && req.user.role !== 'admin') {
+      res.status(403).json({ error: 'Only clients can order service packages' });
+      return;
+    }
+
+    const { freelancerId, packageTitle, price, deliveryDays, deliverables, briefNote } = req.body;
+    if (!freelancerId || !packageTitle || !price) {
+      res.status(400).json({ error: 'freelancerId, packageTitle, and price are required' });
+      return;
+    }
+
+    const freelancer = await User.findById(freelancerId);
+    if (!freelancer) {
+      res.status(404).json({ error: 'Freelancer not found' });
+      return;
+    }
+
+    const brief = await Brief.create({
+      clientId: req.user.id,
+      title: packageTitle,
+      category: 'branding',
+      problemStatement: briefNote || `Instant package order for ${packageTitle}. Agreed delivery in ${deliveryDays || 5} days.`,
+      targetAudience: 'Global / Multi-channel',
+      deliverablesRequired: Array.isArray(deliverables) && deliverables.length > 0 ? deliverables : [packageTitle],
+      budgetMin: Number(price),
+      budgetMax: Number(price),
+      currency: 'USD',
+      deadlineWeeks: Math.max(1, Math.ceil((Number(deliveryDays) || 7) / 7)),
+      status: 'assigned',
+      sliders: [],
+      proposalsCount: 1,
+      magicLinkToken: `pkg-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+    });
+
+    const contract: any = await Contract.create({
+      briefId: brief._id,
+      clientId: req.user.id,
+      freelancerId: (freelancer as any)._id,
+      totalBudget: Number(price),
+      currency: 'USD',
+      status: 'active',
+      msaAgreementSignedAt: new Date(),
+      clientSignature: `Instant Order by ${req.user.name || 'Client'} (${req.user.email || 'client@floxa.work'})`,
+      proposalSnapshot: {
+        packageTitle,
+        deliverables,
+        deliveryDays,
+        orderedAt: new Date(),
+      },
+    });
+
+    const milestone: any = await Milestone.create({
+      contractId: contract._id,
+      milestoneNumber: 1,
+      title: `${packageTitle} — Complete Delivery`,
+      description: `Delivery within ${deliveryDays || 5} business days. Deliverables: ${(deliverables || []).join(', ')}`,
+      amount: Number(price),
+      currency: 'USD',
+      deliverableStatus: 'in_progress',
+      paymentStatus: 'not_recorded',
+      escrowState: 'awaiting_deposit',
+      deliverableRequirements: Array.isArray(deliverables) && deliverables.length > 0 ? deliverables : [packageTitle],
+      submissions: [],
+      revisionRequests: [],
+    });
+
+    await PaymentRecord.create({
+      contractId: contract._id,
+      milestoneId: milestone._id,
+      payerId: contract.clientId,
+      payeeId: contract.freelancerId,
+      amount: milestone.amount,
+      currency: 'USD',
+      paymentMethod: 'bank_transfer',
+      paymentMethodDetails: 'Fixed-Scope Package Order',
+      reportedDate: new Date(),
+      status: 'not_recorded',
+      notes: `Instant package hire: ${packageTitle}`,
+    });
+
+    await Notification.create({
+      userId: (freelancer as any)._id,
+      type: 'milestone',
+      title: 'New Instant Package Order Received!',
+      message: `${req.user.name || 'A client'} just ordered "${packageTitle}" for $${Number(price).toLocaleString()}!`,
+      linkUrl: '/active-contract',
+      read: false,
+    });
+
+    broadcastSystemNotification({
+      type: 'milestone',
+      title: 'New Instant Package Order Received!',
+      message: `${req.user.name || 'A client'} ordered "${packageTitle}" ($${Number(price).toLocaleString()})`,
+    });
+
+    res.status(201).json({
+      message: 'Instant package order placed successfully',
+      contract,
+      milestone,
+      brief,
+    });
+  } catch (error: any) {
+    console.error('Instant package error:', error);
+    res.status(500).json({ error: error.message || 'Failed to order instant package' });
   }
 }

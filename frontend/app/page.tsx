@@ -124,6 +124,42 @@ export default function HomePage() {
     }
   };
 
+  // Register PWA Service Worker & Request Push Notification Permissions
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register('/sw.js')
+        .then((reg) => {
+          console.log('[FLOXA Work PWA] ServiceWorker registered with scope:', reg.scope);
+        })
+        .catch((err) => {
+          console.warn('[FLOXA Work PWA] ServiceWorker registration failed:', err);
+        });
+
+      if ('Notification' in window && Notification.permission === 'default') {
+        setTimeout(() => {
+          Notification.requestPermission();
+        }, 3000);
+      }
+    }
+  }, []);
+
+  const triggerDesktopNotification = (title: string, body: string) => {
+    if (
+      typeof window !== 'undefined' &&
+      'Notification' in window &&
+      Notification.permission === 'granted' &&
+      document.hidden
+    ) {
+      try {
+        new Notification(title, {
+          body,
+          icon: '/android-chrome-192x192.png',
+        });
+      } catch {}
+    }
+  };
+
   useEffect(() => {
     if (currentUser) {
       loadProposals();
@@ -244,6 +280,10 @@ export default function HomePage() {
             // If message is from someone else, trigger notification & toast
             if (!isSelf) {
               playNotificationPing();
+              triggerDesktopNotification(
+                'FLOXA Work: ' + (incoming.senderName || peerName),
+                incoming.text
+              );
 
               // Add rich floating toast
               triggerFloatingToast({
@@ -295,6 +335,10 @@ export default function HomePage() {
             });
             setCallStatus('ringing');
             ringtoneRef.current.start(true); // Telephone incoming ring sound!
+            triggerDesktopNotification(
+              'FLOXA Work: Incoming Video Screening Call',
+              `Incoming video call from ${data.callerName || peerName}`
+            );
 
             triggerFloatingToast({
               type: 'call',
@@ -348,6 +392,10 @@ export default function HomePage() {
           if (data.type === 'system_notification' && data.payload) {
             playNotificationPing();
             const sys = data.payload;
+            triggerDesktopNotification(
+              'FLOXA Work: ' + (sys.title || 'Platform Update'),
+              sys.message
+            );
 
             triggerFloatingToast({
               type: sys.type || 'info',

@@ -20,6 +20,10 @@ import {
   Clock,
   ArrowUpDown,
   Mail,
+  Zap,
+  Package,
+  Shield,
+  Check,
 } from 'lucide-react';
 import {
   searchFreelancersApi,
@@ -36,6 +40,7 @@ import {
   declineInvitationApi,
   fetchBriefs,
   getAuthUser,
+  orderInstantPackageApi,
 } from '@/lib/api';
 
 interface DiscoveryViewProps {
@@ -57,8 +62,17 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [availabilityFilter, setAvailabilityFilter] = useState('all');
+  const [rateFilter, setRateFilter] = useState<'all' | 'under50' | '50to100' | 'over100'>('all');
+  const [selectedSkill, setSelectedSkill] = useState<string>('');
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [sortBy, setSortBy] = useState('match');
+
+  // Instant Package Order Modal State
+  const [packageModalTalent, setPackageModalTalent] = useState<any | null>(null);
+  const [selectedPackage, setSelectedPackage] = useState<any | null>(null);
+  const [packageOrderNote, setPackageOrderNote] = useState<string>('');
+  const [isOrderingPackage, setIsOrderingPackage] = useState(false);
+  const [orderSuccessMsg, setOrderSuccessMsg] = useState<string | null>(null);
 
   // Data state
   const [freelancers, setFreelancers] = useState<any[]>([]);
@@ -98,9 +112,23 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       if (isClient) {
         // Client discovers freelancers
         if (activeTab === 'search' || activeTab === 'recommended') {
+          let minRate: number | undefined;
+          let maxRate: number | undefined;
+          if (rateFilter === 'under50') {
+            maxRate = 50;
+          } else if (rateFilter === '50to100') {
+            minRate = 50;
+            maxRate = 100;
+          } else if (rateFilter === 'over100') {
+            minRate = 100;
+          }
+
           const res = await searchFreelancersApi({
             q: searchQuery,
             category: selectedCategory,
+            skill: selectedSkill || undefined,
+            minRate,
+            maxRate,
             availability: availabilityFilter,
             verifiedOnly,
             sortBy,
@@ -143,7 +171,36 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
       loadDiscoveryData();
     }, 250);
     return () => clearTimeout(timer);
-  }, [activeTab, searchQuery, selectedCategory, availabilityFilter, verifiedOnly, sortBy, isClient]);
+  }, [activeTab, searchQuery, selectedCategory, availabilityFilter, rateFilter, selectedSkill, verifiedOnly, sortBy, isClient]);
+
+  // Handle Instant Package Order
+  const handleOrderPackage = async () => {
+    if (!packageModalTalent || !selectedPackage) return;
+    setIsOrderingPackage(true);
+    setOrderSuccessMsg(null);
+    try {
+      const talentUserId = packageModalTalent.userId?._id || packageModalTalent.userId?.id;
+      await orderInstantPackageApi({
+        freelancerId: talentUserId,
+        packageTitle: selectedPackage.title,
+        price: selectedPackage.price,
+        deliveryDays: selectedPackage.deliveryDays || 5,
+        deliverables: selectedPackage.deliverables || [selectedPackage.title],
+        briefNote: packageOrderNote,
+      });
+      setOrderSuccessMsg('Package order placed successfully! Project Contract & Milestone 1 initialized.');
+      setTimeout(() => {
+        setPackageModalTalent(null);
+        setSelectedPackage(null);
+        setOrderSuccessMsg(null);
+        window.location.reload();
+      }, 1500);
+    } catch (err: any) {
+      alert(err.message || 'Failed to place package order');
+    } finally {
+      setIsOrderingPackage(false);
+    }
+  };
 
   // Handle Save / Unsave Freelancer
   const handleToggleSaveFreelancer = async (freelancerId: string) => {
@@ -364,6 +421,60 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
               </button>
             ))}
           </div>
+
+          {/* Rate & Skill Tag Filters for Client View */}
+          {isClient && (
+            <div className="space-y-2 pt-2 border-t border-slate-100 text-xs">
+              {/* Rate Range Pills */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Rate:</span>
+                {[
+                  { id: 'all', label: 'All Rates' },
+                  { id: 'under50', label: '< $50/hr' },
+                  { id: '50to100', label: '$50 – $100/hr' },
+                  { id: 'over100', label: '$100+/hr' },
+                ].map((r) => (
+                  <button
+                    key={r.id}
+                    onClick={() => setRateFilter(r.id as any)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                      rateFilter === r.id
+                        ? 'bg-slate-900 text-white'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    {r.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Skill Tag Filters */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Skill:</span>
+                {[
+                  { id: '', label: 'All Skills' },
+                  { id: 'Brand Identity', label: 'Brand Identity' },
+                  { id: 'Design Systems', label: 'Design Systems' },
+                  { id: 'Figma', label: 'Figma' },
+                  { id: 'UI/UX Tokens', label: 'UI/UX Tokens' },
+                  { id: 'Full-Stack', label: 'Full-Stack' },
+                  { id: 'Next.js', label: 'Next.js' },
+                ].map((sk) => (
+                  <button
+                    key={sk.id}
+                    onClick={() => setSelectedSkill(sk.id)}
+                    className={`px-2.5 py-0.5 rounded-full text-[10.5px] font-medium transition-all whitespace-nowrap ${
+                      selectedSkill === sk.id
+                        ? 'bg-[#0084ff] text-white shadow-xs font-semibold'
+                        : 'bg-slate-50 border border-slate-200 text-slate-600 hover:border-slate-300'
+                    }`}
+                  >
+                    {sk.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -493,16 +604,42 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => {
+                          setPackageModalTalent(talent);
+                          setSelectedPackage(
+                            talent.services?.[0] || {
+                              title: 'Brand Identity & Visual System Kit',
+                              description: 'Vector logo files, complete brand guidelines PDF, typography hierarchy & Figma color tokens.',
+                              price: 1200,
+                              deliveryDays: 5,
+                              deliverables: [
+                                'Vector Logo Master Files (SVG, AI, PNG)',
+                                'Brand Style Guide & Token Spec PDF',
+                                'Typography & Color Palette Tokens',
+                                'Social Media Kit & Favicon Suite',
+                              ],
+                            }
+                          );
+                          setPackageOrderNote('');
+                          setOrderSuccessMsg(null);
+                        }}
+                        className="px-2.5 py-1.5 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#0084ff] border border-blue-200 text-xs font-bold inline-flex items-center gap-1 transition-all"
+                        title="Fixed-scope turnkey packages"
+                      >
+                        <Zap size={12} className="fill-[#0084ff]" />
+                        <span>Packages</span>
+                      </button>
                       <button
                         onClick={() => {
                           setInviteModalTalent(talent);
                           setInviteFeedback(null);
                         }}
-                        className="btn-cyan-pill text-xs px-3.5 py-1.5 shadow-xs"
+                        className="btn-cyan-pill text-xs px-3 py-1.5 shadow-xs"
                       >
                         <Send size={12} />
-                        <span>Invite to Brief</span>
+                        <span>Invite</span>
                       </button>
                     </div>
                   </div>
@@ -848,6 +985,156 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
                 className="btn-cyan-pill text-xs px-5 py-2"
               >
                 Got It
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* INSTANT PACKAGE HIRE MODAL (Contra / Fiverr Pro style 1-click hire) */}
+      {packageModalTalent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in">
+          <div className="bg-white rounded-2xl border border-slate-200 p-5 max-w-lg w-full shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-full bg-[#0084ff]/10 text-[#0084ff] flex items-center justify-center font-bold">
+                  <Zap size={18} className="fill-[#0084ff]" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Instant Fixed-Scope Hire</h3>
+                  <p className="text-[11px] text-slate-500">
+                    Direct contract & Milestone 1 with {packageModalTalent.userId?.name || 'Specialist'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPackageModalTalent(null)}
+                className="text-slate-400 hover:text-slate-700"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Packages Selector */}
+            <div className="space-y-2.5">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                Select Turnkey Service Package
+              </label>
+              {(packageModalTalent.services && packageModalTalent.services.length > 0
+                ? packageModalTalent.services
+                : [
+                    {
+                      title: 'Brand Identity & Visual System Kit',
+                      description: 'Vector logo files, complete brand guidelines PDF, typography hierarchy & Figma color tokens.',
+                      price: 1200,
+                      deliveryDays: 5,
+                      deliverables: [
+                        'Vector Logo Master Files (SVG, AI, PNG)',
+                        'Brand Style Guide & Token Spec PDF',
+                        'Typography & Color Palette Tokens',
+                        'Social Media Kit & Favicon Suite',
+                      ],
+                    },
+                    {
+                      title: 'High-Conversion SaaS UI/UX Sprint',
+                      description: '5 core desktop & mobile screen designs in Figma with clickable prototype and dev handoff specs.',
+                      price: 1800,
+                      deliveryDays: 7,
+                      deliverables: [
+                        '5 Production-Ready Screen Designs',
+                        'Interactive Clickable Figma Prototype',
+                        'Atomic UI Component Library',
+                      ],
+                    },
+                  ]
+              ).map((pkg: any, idx: number) => {
+                const isSelected = selectedPackage?.title === pkg.title;
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => setSelectedPackage(pkg)}
+                    className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                      isSelected
+                        ? 'border-[#0084ff] bg-blue-50/60 shadow-xs ring-1 ring-[#0084ff]'
+                        : 'border-slate-200 bg-white hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                      <div className="font-bold text-xs text-slate-900 flex items-center gap-1.5">
+                        <Package size={14} className={isSelected ? 'text-[#0084ff]' : 'text-slate-400'} />
+                        <span>{pkg.title}</span>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="font-mono font-extrabold text-sm text-[#0084ff]">${pkg.price?.toLocaleString()}</div>
+                        <div className="text-[10px] text-slate-400 font-medium">{pkg.deliveryDays || 5} days delivery</div>
+                      </div>
+                    </div>
+                    {pkg.description && (
+                      <p className="text-[11px] text-slate-600 mb-2 leading-relaxed">{pkg.description}</p>
+                    )}
+                    {pkg.deliverables && (
+                      <ul className="text-[10.5px] text-slate-500 space-y-1 pl-1">
+                        {pkg.deliverables.map((d: string, dIdx: number) => (
+                          <li key={dIdx} className="flex items-center gap-1.5">
+                            <Check size={11} className="text-emerald-500 shrink-0" />
+                            <span>{d}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Client Note */}
+            <div>
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                Project Notes / Reference Links (Optional)
+              </label>
+              <textarea
+                rows={2}
+                value={packageOrderNote}
+                onChange={(e) => setPackageOrderNote(e.target.value)}
+                placeholder="Include website URL, brand references, or specific target deadlines..."
+                className="w-full text-xs p-2.5 rounded-xl bg-slate-50 border border-slate-200 outline-none text-slate-800 resize-none font-medium"
+              />
+            </div>
+
+            {/* Zero Custody Trust Banner */}
+            <div className="p-2.5 rounded-xl bg-emerald-50/80 border border-emerald-200/80 text-[11px] flex items-center gap-2 text-emerald-900">
+              <Shield size={16} className="text-emerald-600 shrink-0" />
+              <span>
+                <strong>0% Platform Custody:</strong> Milestone 1 will be initialized for review. Direct verified milestone settlement between you and the specialist.
+              </span>
+            </div>
+
+            {orderSuccessMsg && (
+              <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs text-[#0084ff] font-bold">
+                {orderSuccessMsg}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setPackageModalTalent(null)}
+                className="px-4 py-2 rounded-full border border-slate-200 text-xs text-slate-600 font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleOrderPackage}
+                disabled={isOrderingPackage || !selectedPackage}
+                className="btn-cyan-pill text-xs px-5 py-2 disabled:opacity-50 inline-flex items-center gap-1.5"
+              >
+                <Zap size={13} className="fill-white" />
+                <span>
+                  {isOrderingPackage
+                    ? 'Creating Contract...'
+                    : `Confirm & Order Package ($${selectedPackage?.price?.toLocaleString() || '0'})`}
+                </span>
               </button>
             </div>
           </div>

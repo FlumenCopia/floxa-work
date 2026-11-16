@@ -46,6 +46,50 @@ async function seed() {
       escrowVolumeEarned: 28400,
       ratingAverage: 5.0,
       ratingCount: 14,
+      services: [
+        {
+          title: 'Brand Identity & Visual System Kit',
+          description: 'Comprehensive brand identity sprint: vector logos, typography hierarchy, responsive colour tokens, and 20-page brand guidelines PDF.',
+          price: 1200,
+          currency: 'USD',
+          deliveryDays: 5,
+          deliverables: [
+            'Vector Logo Master Files (SVG, AI, PNG)',
+            'Brand Style Guide & Token Spec PDF',
+            'Typography & Color Palette Tokens',
+            'Social Media Kit & Favicon Suite'
+          ],
+          revisions: 3,
+        },
+        {
+          title: 'High-Conversion SaaS UI/UX Design Sprint',
+          description: 'End-to-end design of 5 core web/mobile app screens with interactive Figma prototype, auto-layout components, and developer handover specs.',
+          price: 1800,
+          currency: 'USD',
+          deliveryDays: 7,
+          deliverables: [
+            '5 Production-Ready Screen Designs (Desktop & Mobile)',
+            'Interactive Clickable Figma Prototype',
+            'Atomic UI Component Library (Buttons, Forms, Cards)',
+            'Dev Handoff Notes & Asset Exports'
+          ],
+          revisions: 2,
+        },
+        {
+          title: 'Full Design System Architecture',
+          description: 'Scalable corporate design system for multi-product ecosystems: token architecture, 50+ modular components, and dark/light mode variants.',
+          price: 2600,
+          currency: 'USD',
+          deliveryDays: 12,
+          deliverables: [
+            '50+ Dynamic Auto-Layout Components',
+            'Semantic Token Architecture (Light/Dark)',
+            'Interactive Documentation in Figma',
+            'Code-ready CSS/Tailwind Variable Map'
+          ],
+          revisions: 4,
+        }
+      ],
     });
 
     // 2. Create Client

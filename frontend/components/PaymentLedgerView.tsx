@@ -12,8 +12,10 @@ import {
   CreditCard,
   Receipt,
   AlertTriangle,
+  Download,
+  FileText,
 } from 'lucide-react';
-import { fetchActiveContract, getAuthUser } from '@/lib/api';
+import { fetchActiveContract, getAuthUser, downloadMilestoneInvoiceApi } from '@/lib/api';
 
 export const PaymentLedgerView: React.FC = () => {
   const [contractData, setContractData] = useState<{
@@ -22,9 +24,26 @@ export const PaymentLedgerView: React.FC = () => {
     paymentRecords?: any[];
   } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [downloadingMilestone, setDownloadingMilestone] = useState<string | number | null>(null);
 
   const currentUser = getAuthUser();
   const isClient = currentUser?.role === 'client';
+
+  const handleDownloadInvoice = async (milestoneId?: string | number) => {
+    if (!contractData?.contract?._id && !contractData?.contract?.id) {
+      alert('No active contract found to generate an invoice for.');
+      return;
+    }
+    const contractId = contractData.contract._id || contractData.contract.id;
+    setDownloadingMilestone(milestoneId ?? 'full');
+    try {
+      await downloadMilestoneInvoiceApi(contractId, milestoneId ? String(milestoneId) : undefined);
+    } catch (err: any) {
+      alert(err.message || 'Failed to download tax invoice');
+    } finally {
+      setDownloadingMilestone(null);
+    }
+  };
 
   useEffect(() => {
     async function loadLedger() {
@@ -83,9 +102,21 @@ export const PaymentLedgerView: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
-          <ShieldCheck size={15} className="text-emerald-600" />
-          <span>Zero Escrow Custody</span>
+        <div className="flex items-center gap-2">
+          {contract && (
+            <button
+              onClick={() => handleDownloadInvoice()}
+              disabled={downloadingMilestone === 'full'}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition-all shadow-xs disabled:opacity-50"
+            >
+              <FileText size={14} className="text-[#38bdf8]" />
+              <span>{downloadingMilestone === 'full' ? 'Generating Invoice...' : 'Export Tax Invoice (PDF)'}</span>
+            </button>
+          )}
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
+            <ShieldCheck size={15} className="text-emerald-600" />
+            <span>Zero Escrow Custody</span>
+          </div>
         </div>
       </div>
 
@@ -154,7 +185,7 @@ export const PaymentLedgerView: React.FC = () => {
                   <th className="py-3 px-4">Deliverable State</th>
                   <th className="py-3 px-4">Payment Record State</th>
                   <th className="py-3 px-4">Method & UTR</th>
-                  <th className="py-3 px-4 text-right">Receipt</th>
+                  <th className="py-3 px-4 text-right">Tax Invoice & Proof</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -244,19 +275,33 @@ export const PaymentLedgerView: React.FC = () => {
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                        {record?.receiptFileUrl || m.paymentDetails?.receiptFileUrl ? (
-                          <a
-                            href={record?.receiptFileUrl || m.paymentDetails?.receiptFileUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-[#0084ff] hover:underline font-bold text-xs inline-flex items-center gap-1"
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleDownloadInvoice(m._id || m.id || m.milestoneNumber)}
+                            disabled={downloadingMilestone === (m._id || m.id || m.milestoneNumber)}
+                            className="px-2.5 py-1 rounded-lg bg-[#0084ff]/10 hover:bg-[#0084ff]/20 text-[#0084ff] border border-[#0084ff]/25 font-bold text-[11px] inline-flex items-center gap-1.5 transition-all shadow-xs disabled:opacity-50"
+                            title="Download Commercial Tax Invoice & Settlement Receipt (PDF)"
                           >
-                            <span>Receipt</span>
-                            <ExternalLink size={11} />
-                          </a>
-                        ) : (
-                          <span className="text-slate-400 text-xs">—</span>
-                        )}
+                            <Download size={12} />
+                            <span>
+                              {downloadingMilestone === (m._id || m.id || m.milestoneNumber)
+                                ? 'Generating...'
+                                : 'PDF Invoice'}
+                            </span>
+                          </button>
+                          {record?.receiptFileUrl || m.paymentDetails?.receiptFileUrl ? (
+                            <a
+                              href={record?.receiptFileUrl || m.paymentDetails?.receiptFileUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="text-slate-500 hover:text-slate-900 font-semibold text-xs inline-flex items-center gap-1"
+                              title="External Payment Proof"
+                            >
+                              <span>Proof</span>
+                              <ExternalLink size={11} />
+                            </a>
+                          ) : null}
+                        </div>
                       </td>
                     </tr>
                   );

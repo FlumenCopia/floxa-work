@@ -1,12 +1,12 @@
 {
-  "name": "FLOXA - Client & Consultant Workspace",
-  "short_name": "FLOXA",
-  "description": "Collaborative branding deliverables, client discovery, and milestone management.",
+  "name": "FLOXA Work — Freelance Marketplace & Discovery Network",
+  "short_name": "FLOXA Work",
+  "description": "Discovery-First Freelance Marketplace with Non-Custodial Direct Milestone Ledger.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#000704",
-  "theme_color": "#4dffa0",
+  "background_color": "#0b1329",
+  "theme_color": "#0084ff",
   "orientation": "portrait-primary",
   "categories": ["business", "productivity"],
   "icons": [

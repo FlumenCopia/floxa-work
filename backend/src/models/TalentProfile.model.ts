@@ -10,6 +10,17 @@ export interface ITalentPortfolioItem {
   outcome?: string;
 }
 
+export interface ITalentServicePackage {
+  id?: string;
+  title: string;
+  description: string;
+  price: number;
+  currency?: string;
+  deliveryDays: number;
+  deliverables: string[];
+  revisions?: number;
+}
+
 export interface ITalentProfile {
   _id?: Types.ObjectId;
   id: string;
@@ -28,6 +39,7 @@ export interface ITalentProfile {
   availableSpotsThisMonth: number;
   portfolioLinks: { title: string; url: string; platform: string }[];
   portfolioItems?: ITalentPortfolioItem[];
+  services?: ITalentServicePackage[];
   completedContractsCount: number;
   escrowVolumeEarned: number;
   ratingAverage: number;
@@ -88,6 +100,17 @@ const talentProfileSchema = new Schema<ITalentProfile>(
       },
     ],
     portfolioItems: { type: [talentPortfolioItemSchema], default: [] },
+    services: [
+      {
+        title: { type: String, required: true },
+        description: { type: String, default: '' },
+        price: { type: Number, required: true },
+        currency: { type: String, default: 'USD' },
+        deliveryDays: { type: Number, default: 7 },
+        deliverables: { type: [String], default: [] },
+        revisions: { type: Number, default: 2 },
+      },
+    ],
     completedContractsCount: { type: Number, default: 0 },
     escrowVolumeEarned: { type: Number, default: 0 },
     ratingAverage: { type: Number, default: 5.0 },

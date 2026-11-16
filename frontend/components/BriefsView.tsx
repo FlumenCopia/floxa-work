@@ -59,12 +59,15 @@ export const BriefsView: React.FC<BriefsViewProps> = ({
   searchFilter = '',
 }) => {
   const [activeCategory, setActiveCategory] = useState('all');
+  const [budgetFilter, setBudgetFilter] = useState<'all' | 'under1500' | '1500to3000' | 'over3000'>('all');
+  const [sortBy, setSortBy] = useState<'newest' | 'highest' | 'lowest'>('newest');
   const [briefs, setBriefs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const categories = [
     { id: 'all', label: 'All Briefs' },
     { id: 'branding', label: 'Brand & Identity' },
+    { id: 'uiux', label: 'UI/UX Design' },
     { id: 'webdev', label: 'Full-Stack Dev' },
     { id: 'marketing', label: 'Marketing' },
   ];
@@ -85,15 +88,36 @@ export const BriefsView: React.FC<BriefsViewProps> = ({
     loadBriefs();
   }, [activeCategory]);
 
-  const filteredBriefs = briefs.filter((b) => {
-    if (!searchFilter) return true;
-    const q = searchFilter.toLowerCase();
-    return (
-      b.title?.toLowerCase().includes(q) ||
-      b.problemStatement?.toLowerCase().includes(q) ||
-      b.category?.toLowerCase().includes(q)
-    );
-  });
+  const filteredBriefs = briefs
+    .filter((b) => {
+      if (searchFilter) {
+        const q = searchFilter.toLowerCase();
+        const matchesQuery =
+          b.title?.toLowerCase().includes(q) ||
+          b.problemStatement?.toLowerCase().includes(q) ||
+          b.category?.toLowerCase().includes(q);
+        if (!matchesQuery) return false;
+      }
+
+      if (budgetFilter === 'under1500') {
+        return (b.budgetMax || b.budgetMin || 0) < 1500;
+      } else if (budgetFilter === '1500to3000') {
+        const max = b.budgetMax || b.budgetMin || 0;
+        return max >= 1500 && max <= 3000;
+      } else if (budgetFilter === 'over3000') {
+        return (b.budgetMax || b.budgetMin || 0) > 3000;
+      }
+
+      return true;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'highest') {
+        return (b.budgetMax || 0) - (a.budgetMax || 0);
+      } else if (sortBy === 'lowest') {
+        return (a.budgetMin || 0) - (b.budgetMin || 0);
+      }
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
 
   const totalProjectVolume = briefs.reduce((acc, b) => acc + (b.budgetMax || 0), 0);
 
@@ -148,24 +172,68 @@ export const BriefsView: React.FC<BriefsViewProps> = ({
         </div>
       </div>
 
-      {/* Pill Filter Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-          {categories.map((c) => (
-            <button
-              key={c.id}
-              onClick={() => setActiveCategory(c.id)}
-              className={`pill-tab ${activeCategory === c.id ? 'active' : ''}`}
-            >
-              <span>{c.label}</span>
-            </button>
-          ))}
+      {/* Pill Filter Tabs & Controls */}
+      <div className="space-y-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+            {categories.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => setActiveCategory(c.id)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all ${
+                  activeCategory === c.id
+                    ? 'bg-[#0084ff] text-white shadow-xs'
+                    : 'bg-slate-50 border border-slate-200 text-slate-600 hover:border-slate-300'
+                }`}
+              >
+                <span>{c.label}</span>
+              </button>
+            ))}
+          </div>
+
+          <button onClick={onPostNewBrief} className="btn-cyan-pill self-start sm:self-auto shrink-0">
+            <Plus size={14} strokeWidth={3} />
+            <span>Post Brief</span>
+          </button>
         </div>
 
-        <button onClick={onPostNewBrief} className="btn-cyan-pill self-start sm:self-auto">
-          <Plus size={14} strokeWidth={3} />
-          <span>Post Brief</span>
-        </button>
+        {/* Budget Filters & Sort Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Budget:</span>
+            {[
+              { id: 'all', label: 'All Budgets' },
+              { id: 'under1500', label: '< $1,500' },
+              { id: '1500to3000', label: '$1,500 – $3,000' },
+              { id: 'over3000', label: '$3,000+' },
+            ].map((b) => (
+              <button
+                key={b.id}
+                onClick={() => setBudgetFilter(b.id as any)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                  budgetFilter === b.id
+                    ? 'bg-slate-900 text-white'
+                    : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200/80'
+                }`}
+              >
+                {b.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Sort:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className="px-2.5 py-1 text-xs rounded-lg bg-slate-50 border border-slate-200 text-slate-700 outline-none font-semibold"
+            >
+              <option value="newest">Newest First</option>
+              <option value="highest">Highest Budget</option>
+              <option value="lowest">Lowest Budget</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Loading State */}
