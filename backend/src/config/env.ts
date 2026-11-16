@@ -82,13 +82,14 @@ export const ENV = {
   S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY || '',
 
   // Email Delivery
-  EMAIL_PROVIDER: (process.env.EMAIL_PROVIDER || 'log') as 'log' | 'smtp' | 'sendgrid' | 'resend',
-  EMAIL_FROM: process.env.EMAIL_FROM || 'FLOXA Work <no-reply@floxa.work>',
-  SMTP_HOST: process.env.SMTP_HOST || 'localhost',
-  SMTP_PORT: parseInt(process.env.SMTP_PORT || '587', 10),
-  SMTP_USER: process.env.SMTP_USER || '',
-  SMTP_PASS: process.env.SMTP_PASS || '',
-  SMTP_SECURE: process.env.SMTP_SECURE === 'true',
+  EMAIL_PROVIDER: (process.env.EMAIL_PROVIDER || 'smtp') as 'log' | 'smtp' | 'sendgrid' | 'resend',
+  EMAIL_FROM: process.env.EMAIL_FROM || process.env.DEFAULT_FROM_EMAIL || 'FLOXA Work <contactmiscarchive@gmail.com>',
+  SMTP_HOST: process.env.SMTP_HOST || process.env.EMAIL_HOST || 'smtp.gmail.com',
+  SMTP_PORT: parseInt(process.env.SMTP_PORT || process.env.EMAIL_PORT || '587', 10),
+  SMTP_USER: process.env.SMTP_USER || process.env.EMAIL_HOST_USER || 'contactmiscarchive@gmail.com',
+  SMTP_PASS: process.env.SMTP_PASS || process.env.EMAIL_HOST_PASSWORD || 'onorlcovemxsxtwd',
+  SMTP_SECURE: process.env.SMTP_SECURE === 'true' || process.env.EMAIL_USE_SSL === 'true',
+  FRONTEND_BASE_URL: (process.env.FRONTEND_BASE_URL || 'https://work.flumenx.in').replace(/\/+$/, ''),
 
   // WebRTC / STUN / TURN
   STUN_SERVERS: (process.env.STUN_SERVERS || 'stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302')

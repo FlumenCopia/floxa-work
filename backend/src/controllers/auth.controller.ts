@@ -434,19 +434,16 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
       metadata: { email: user.email },
     });
 
-    // Non-blocking transactional email dispatch
-    emailService.sendEmail({
-      to: user.email,
-      subject: 'FLOXA Work — Password Reset Request',
-      text: `Hello ${user.name},\n\nYou requested a password reset for your FLOXA Work account. Use the following token to reset your password within 1 hour:\n\n${resetToken}\n\nIf you did not request this, please ignore this email.`,
-      category: 'security_alert',
-    }).catch((err) => {
-      console.warn('[Email Warning] Failed to dispatch password reset email:', err.message);
+    // Non-blocking transactional email dispatch using Floxa Design template & Gmail SMTP
+    const baseUrlOverride = (req.get('origin') || req.headers?.origin || req.headers?.referer) as string | undefined;
+    emailService.sendPasswordResetEmail(user, resetToken, baseUrlOverride).catch((err: any) => {
+      console.warn('[Email Warning] Failed to dispatch password reset email:', err?.message || err);
     });
 
     res.json({
       message: 'If that email is registered, password reset instructions have been sent.',
-      ...(ENV.IS_PRODUCTION ? {} : { resetToken }), // Omitted in production to prevent account takeover
+      detail: 'If an account exists for this email, a password reset link has been sent.',
+      ...(ENV.IS_PRODUCTION ? {} : { resetToken }),
     });
   } catch (error: any) {
     res.status(500).json({ error: error.message || 'Password reset request failed.' });
@@ -455,14 +452,19 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
 
 export async function resetPassword(req: Request, res: Response): Promise<void> {
   try {
-    const { token, newPassword } = req.body;
+    const { token, newPassword, confirmPassword } = req.body;
     if (!token || !newPassword) {
-      res.status(400).json({ error: 'Token and newPassword are required.' });
+      res.status(400).json({ error: 'Token and newPassword are required.', detail: 'Password reset token and new password are required.' });
       return;
     }
 
     if (newPassword.length < 8) {
-      res.status(400).json({ error: 'Password must be at least 8 characters long.' });
+      res.status(400).json({ error: 'Password must be at least 8 characters long.', detail: 'New password must be at least 8 characters long.' });
+      return;
+    }
+
+    if (confirmPassword && newPassword !== confirmPassword) {
+      res.status(400).json({ error: 'Passwords do not match.', detail: 'New password and confirmation do not match.' });
       return;
     }
 
@@ -473,7 +475,13 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
     });
 
     if (!user) {
-      res.status(400).json({ error: 'Invalid or expired password reset token.' });
+      res.status(400).json({ error: 'Invalid or expired password reset token.', detail: 'Password reset link is invalid or has expired.' });
+      return;
+    }
+
+    const isSameAsCurrent = await bcrypt.compare(newPassword, user.passwordHash);
+    if (isSameAsCurrent) {
+      res.status(400).json({ error: 'New password cannot be the same as current password.', detail: 'New password cannot be the same as your current password.' });
       return;
     }
 
@@ -485,6 +493,11 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
 
     // Security hardening: Revoke ALL sessions for this user upon password change
     await Session.updateMany({ userId: user._id }, { isRevoked: true });
+
+    // Send security notification email
+    emailService.sendPasswordChangedNotification(user).catch((err: any) => {
+      console.warn('[Email Warning] Failed to dispatch password change notification:', err?.message || err);
+    });
 
     const ipAddress = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
     const userAgent = req.headers['user-agent'] || 'Unknown';
@@ -501,9 +514,94 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
 
     res.json({
       message: 'Password reset successfully. All active sessions have been closed. Please log in with your new password.',
+      detail: 'Password has been reset successfully. You can now log in with your new password.',
     });
   } catch (error: any) {
-    res.status(500).json({ error: error.message || 'Password reset failed.' });
+    res.status(500).json({ error: error.message || 'Password reset failed.', detail: 'Password reset failed.' });
+  }
+}
+
+export async function changePassword(req: AuthenticatedRequest, res: Response): Promise<void> {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Unauthorized', detail: 'Authentication required.' });
+      return;
+    }
+
+    const { currentPassword, newPassword, confirmPassword } = req.body || {};
+
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ error: 'Current password and new password are required.', detail: 'Current password and new password are required.' });
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      res.status(400).json({ error: 'New password must be at least 8 characters long.', detail: 'New password must be at least 8 characters long.' });
+      return;
+    }
+
+    if (confirmPassword && newPassword !== confirmPassword) {
+      res.status(400).json({ error: 'Passwords do not match.', detail: 'New password and confirmation do not match.' });
+      return;
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      res.status(404).json({ error: 'User not found.', detail: 'User not found.' });
+      return;
+    }
+
+    const isCurrentValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isCurrentValid) {
+      res.status(400).json({ error: 'Current password is incorrect.', detail: 'Current password is incorrect.' });
+      return;
+    }
+
+    const isSameAsCurrent = await bcrypt.compare(newPassword, user.passwordHash);
+    if (isSameAsCurrent) {
+      res.status(400).json({ error: 'New password cannot be the same as current password.', detail: 'New password cannot be the same as your current password.' });
+      return;
+    }
+
+    const salt = await bcrypt.genSalt(12);
+    user.passwordHash = await bcrypt.hash(newPassword, salt);
+    user.passwordResetTokenHash = undefined as any;
+    user.passwordResetExpires = undefined as any;
+    await user.save();
+
+    // Revoke other sessions (keep current or revoke all for strict security)
+    const { currentRefreshToken } = req.body;
+    let query: any = { userId: user._id };
+    if (currentRefreshToken) {
+      const curHash = hashToken(currentRefreshToken);
+      query.refreshTokenHash = { $ne: curHash };
+    }
+    await Session.updateMany(query, { isRevoked: true });
+
+    // Send confirmation email
+    emailService.sendPasswordChangedNotification(user).catch((err: any) => {
+      console.warn('[Email Warning] Failed to dispatch password change notification:', err?.message || err);
+    });
+
+    const ipAddress = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || '127.0.0.1';
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
+    await AuditLog.create({
+      actorId: user._id,
+      action: 'PASSWORD_CHANGE_SUCCESS',
+      targetType: 'User',
+      targetId: user.id,
+      ipAddress,
+      userAgent,
+      metadata: { email: user.email },
+    });
+
+    res.json({
+      message: 'Password changed successfully.',
+      detail: 'Password changed successfully.',
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message || 'Password change failed.', detail: 'Password change failed.' });
   }
 }
 

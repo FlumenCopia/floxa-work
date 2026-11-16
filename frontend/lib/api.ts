@@ -125,18 +125,39 @@ export async function requestPasswordReset(email: string) {
     body: JSON.stringify({ email }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Password reset request failed');
+  if (!res.ok) throw new Error(data.error || data.detail || 'Password reset request failed');
   return data;
 }
 
-export async function resetPassword(token: string, newPassword: string) {
+export async function resetPassword(token: string, newPassword: string, confirmPassword?: string) {
   const res = await fetch(`${API_BASE}/auth/reset-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token, newPassword }),
+    body: JSON.stringify({ token, newPassword, confirmPassword }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to reset password');
+  if (!res.ok) throw new Error(data.error || data.detail || 'Failed to reset password');
+  return data;
+}
+
+export async function changePassword(payload: {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword?: string;
+  currentRefreshToken?: string;
+}) {
+  const token = getAuthToken();
+  if (!token) throw new Error('Authentication required');
+  const res = await fetch(`${API_BASE}/auth/change-password`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || data.detail || 'Failed to change password');
   return data;
 }
 

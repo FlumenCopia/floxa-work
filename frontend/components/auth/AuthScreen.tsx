@@ -248,9 +248,19 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
 
               {/* Password Input */}
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                  Password
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-semibold text-slate-700">
+                    Password
+                  </label>
+                  {!isRegister && (
+                    <a
+                      href="/forgot-password"
+                      className="text-[11px] text-[#0084ff] hover:underline font-medium cursor-pointer"
+                    >
+                      Forgot password?
+                    </a>
+                  )}
+                </div>
                 <div className="relative flex items-center">
                   <Lock size={16} className="absolute left-3.5 text-slate-400" />
                   <input

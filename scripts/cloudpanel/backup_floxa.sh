@@ -18,10 +18,10 @@ mkdir -p "${BACKUP_DIR}"
 echo "[FLOXA BACKUP] Starting isolated backup at ${TIMESTAMP}..."
 
 # 1. Dump MongoDB floxa_work_prod only (never touch MySQL or other DBs)
-echo "[1/4] Dumping MongoDB database 'floxa_work_prod'..."
+echo "[1/5] Dumping MongoDB database 'floxa_work_prod'..."
 MONGODB_URI=""
 if [ -f /etc/floxa/backend.env ]; then
-    MONGODB_URI=$(grep -E '^MONGODB_URI=' /etc/floxa/backend.env | cut -d'=' -f2- || true)
+    MONGODB_URI=$(grep -E '^(MONGODB_URI|DATABASE_URL)=' /etc/floxa/backend.env | head -n1 | cut -d'=' -f2- || true)
 fi
 
 if [ -n "${MONGODB_URI}" ]; then
@@ -31,7 +31,7 @@ else
 fi
 
 # 2. Archive Private Vault Deliverables
-echo "[2/4] Archiving private deliverable vault..."
+echo "[2/5] Archiving private deliverable vault..."
 if [ -d "/home/floxa/private_vault" ]; then
     tar -czf "${BACKUP_DIR}/private_vault.tar.gz" -C /home/floxa private_vault
 elif [ -d "/var/lib/floxa-work/private_vault" ]; then
@@ -39,7 +39,7 @@ elif [ -d "/var/lib/floxa-work/private_vault" ]; then
 fi
 
 # 3. Generate SHA-256 Manifest
-echo "[3/4] Generating checksums..."
+echo "[3/5] Generating checksums..."
 cd "${BACKUP_DIR}"
 find . -type f -exec sha256sum {} + > manifest.sha256
 
@@ -49,7 +49,16 @@ tar -czf "floxa_backup_${TIMESTAMP}.tar.gz" "backup_${TIMESTAMP}"
 rm -rf "backup_${TIMESTAMP}"
 
 # 4. Prune old backups
-echo "[4/4] Pruning archives older than ${RETENTION_DAYS} days..."
+echo "[4/5] Pruning archives older than ${RETENTION_DAYS} days..."
 find "${BACKUP_ROOT}" -name "floxa_backup_*.tar.gz" -type f -mtime +${RETENTION_DAYS} -delete
+
+# 5. Clean up old Floxa Work logs older than 14 days to prevent disk bloat
+echo "[5/5] Performing routine log maintenance..."
+if [ -d "/home/floxa/logs" ]; then
+    find /home/floxa/logs -name "*floxa*.log" -type f -mtime +14 -delete 2>/dev/null || true
+fi
+if [ -d "/var/log/floxa" ]; then
+    find /var/log/floxa -name "*.log" -type f -mtime +14 -delete 2>/dev/null || true
+fi
 
 echo "[FLOXA BACKUP] Finished successfully. Archive: ${BACKUP_ROOT}/floxa_backup_${TIMESTAMP}.tar.gz"

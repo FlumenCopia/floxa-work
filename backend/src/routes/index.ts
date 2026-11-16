@@ -9,6 +9,7 @@ import {
   revokeAllOtherSessions,
   forgotPassword,
   resetPassword,
+  changePassword,
   requestEmailVerification,
   verifyEmail,
   getMe,
@@ -146,6 +147,7 @@ router.delete('/auth/sessions/:sessionId', requireAuth, revokeSession);
 router.post('/auth/sessions/revoke-all-others', requireAuth, revokeAllOtherSessions);
 router.post('/auth/forgot-password', authRateLimiter, forgotPassword);
 router.post('/auth/reset-password', authRateLimiter, resetPassword);
+router.post('/auth/change-password', requireAuth, changePassword);
 router.post('/auth/request-email-verification', requireAuth, requestEmailVerification);
 router.post('/auth/verify-email/request', requireAuth, requestEmailVerification);
 router.post('/auth/verify-email', authRateLimiter, verifyEmail);
