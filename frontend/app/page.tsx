@@ -24,6 +24,7 @@ import {
   X,
   Bell,
   Sparkles,
+  ShieldAlert,
 } from 'lucide-react';
 import { fetchMyProposals, clearAuthSession, fetchChatMessages, sendChatMessage } from '@/lib/api';
 import { RingtonePlayer, playNotificationPing } from '@/lib/audio';
@@ -81,6 +82,7 @@ export default function HomePage() {
 
   // Peer metadata defaults
   const isClient = currentUser?.role === 'client';
+  const isAdmin = currentUser?.role === 'admin' || Boolean((currentUser as any)?.adminRole);
   const peerName = isClient ? 'Aravind V.' : 'Sanjay Mehta';
   const peerAvatar = isClient
     ? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=160&q=80'
@@ -94,7 +96,11 @@ export default function HomePage() {
       if (saved && token) {
         const parsed = JSON.parse(saved);
         setCurrentUser(parsed);
-        setCurrentTab(parsed.role === 'client' ? 'client_dashboard' : 'briefs');
+        if (parsed.role === 'admin' || Boolean(parsed.adminRole)) {
+          setCurrentTab('admin');
+        } else {
+          setCurrentTab(parsed.role === 'client' ? 'client_dashboard' : 'briefs');
+        }
       } else {
         clearAuthSession();
         setCurrentUser(null);
@@ -534,7 +540,11 @@ export default function HomePage() {
 
   const handleLoginSuccess = (user: AuthUser) => {
     setCurrentUser(user);
-    setCurrentTab(user.role === 'client' ? 'client_dashboard' : 'briefs');
+    if (user.role === 'admin' || Boolean((user as any).adminRole)) {
+      setCurrentTab('admin');
+    } else {
+      setCurrentTab(user.role === 'client' ? 'client_dashboard' : 'briefs');
+    }
     triggerFloatingToast({
       type: 'info',
       title: 'Signed In',
@@ -946,8 +956,28 @@ export default function HomePage() {
         />
       )}
 
-      {/* VIEW 9: OPERATIONS & KYC ADMIN PORTAL */}
-      {currentTab === 'admin' && <AdminPortal />}
+      {/* VIEW 9: OPERATIONS & KYC ADMIN PORTAL (ADMIN ONLY) */}
+      {currentTab === 'admin' && (
+        isAdmin ? (
+          <AdminPortal />
+        ) : (
+          <div className="p-8 max-w-xl mx-auto my-12 bg-white rounded-2xl border border-slate-200 text-center shadow-sm">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto mb-3">
+              <ShieldAlert size={24} />
+            </div>
+            <h3 className="text-base font-bold text-slate-900 mb-1">Access Restricted</h3>
+            <p className="text-xs text-slate-500 mb-4 leading-relaxed">
+              The Operations &amp; Governance Center is restricted to platform administrators. Your account does not have administrative privileges.
+            </p>
+            <button
+              onClick={() => setCurrentTab(isClient ? 'client_dashboard' : 'briefs')}
+              className="px-4 py-2 rounded-xl bg-[#0084ff] hover:bg-[#0070e0] text-white text-xs font-semibold cursor-pointer transition-all"
+            >
+              Return to Workspace
+            </button>
+          </div>
+        )
+      )}
 
       {/* Modal: Mini-Discovery Proposal Bidding */}
       <MiniDiscoveryModal

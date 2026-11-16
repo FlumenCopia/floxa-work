@@ -9,7 +9,8 @@ export interface AuthUser {
   email: string;
   name: string;
   handle: string;
-  role: 'freelancer' | 'client';
+  role: 'freelancer' | 'client' | 'admin' | 'dual';
+  adminRole?: string;
   avatarUrl: string;
   isVerified: boolean;
 }
@@ -20,7 +21,7 @@ interface AuthScreenProps {
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   const [isRegister, setIsRegister] = useState(false);
-  const [role, setRole] = useState<'client' | 'freelancer'>('client');
+  const [role, setRole] = useState<'client' | 'freelancer' | 'admin'>('client');
   const [email, setEmail] = useState('client@floxa.work');
   const [password, setPassword] = useState('Password123!');
   const [name, setName] = useState('');
@@ -28,9 +29,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSelectRole = (newRole: 'client' | 'freelancer') => {
+  const handleSelectRole = (newRole: 'client' | 'freelancer' | 'admin') => {
     setRole(newRole);
-    if (!isRegister) {
+    if (newRole === 'admin') {
+      setIsRegister(false);
+      setEmail('admin@floxa.work');
+      setPassword('Password123!');
+    } else if (!isRegister) {
       if (newRole === 'client') {
         setEmail('client@floxa.work');
         setPassword('Password123!');
@@ -54,6 +59,11 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
       }
 
       if (isRegister) {
+        if (role === 'admin') {
+          setError('Administrator accounts cannot be registered publicly. Please contact platform operations.');
+          setIsLoading(false);
+          return;
+        }
         if (!name) {
           setError('Please enter your full name.');
           setIsLoading(false);
@@ -68,24 +78,30 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
           role,
         });
         const u = res.user;
+        const normalizedRole: 'freelancer' | 'client' | 'admin' | 'dual' =
+          u.role === 'admin' ? 'admin' : (u.role === 'freelancer' ? 'freelancer' : (u.role === 'dual' ? 'dual' : 'client'));
         onLoginSuccess({
           id: u._id || u.id,
           email: u.email,
           name: u.name,
           handle: u.handle,
-          role: u.role === 'freelancer' ? 'freelancer' : 'client',
+          role: normalizedRole,
+          adminRole: u.adminRole,
           avatarUrl: u.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80',
           isVerified: u.isVerified || false,
         });
       } else {
         const res = await loginUser(email, password);
         const u = res.user;
+        const normalizedRole: 'freelancer' | 'client' | 'admin' | 'dual' =
+          u.role === 'admin' ? 'admin' : (u.role === 'freelancer' ? 'freelancer' : (u.role === 'dual' ? 'dual' : 'client'));
         onLoginSuccess({
           id: u._id || u.id,
           email: u.email,
           name: u.name,
           handle: u.handle,
-          role: u.role === 'freelancer' ? 'freelancer' : 'client',
+          role: normalizedRole,
+          adminRole: u.adminRole,
           avatarUrl: u.avatarUrl || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=160&q=80',
           isVerified: u.isVerified || false,
         });
@@ -167,24 +183,35 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
               <button
                 type="button"
                 onClick={() => handleSelectRole('client')}
-                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
+                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                   role === 'client'
                     ? 'bg-[#0084ff] text-white font-bold shadow-sm'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Client Portal
+                Client
               </button>
               <button
                 type="button"
                 onClick={() => handleSelectRole('freelancer')}
-                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
+                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                   role === 'freelancer'
                     ? 'bg-[#0084ff] text-white font-bold shadow-sm'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
-                Freelancer Portal
+                Freelancer
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSelectRole('admin')}
+                className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                  role === 'admin'
+                    ? 'bg-[#0084ff] text-white font-bold shadow-sm'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Admin
               </button>
             </div>
 
@@ -196,6 +223,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
               <p className="text-xs text-slate-500 mt-0.5">
                 {isRegister
                   ? `Register as a ${role === 'client' ? 'Client' : 'Freelancer'}`
+                  : role === 'admin'
+                  ? 'Sign in to Platform Operations & Governance'
                   : `Sign in as a ${role === 'client' ? 'Client' : 'Freelancer'}`}
               </p>
             </div>
@@ -285,17 +314,19 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess }) => {
               </button>
 
               {/* Toggle Register / Sign In */}
-              <div className="text-center pt-3 border-t border-slate-100 mt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsRegister(!isRegister)}
-                  className="text-xs text-slate-500 hover:text-[#0084ff] font-medium transition-colors cursor-pointer"
-                >
-                  {isRegister
-                    ? 'Already have an account? Sign In'
-                    : "Don't have an account? Create one"}
-                </button>
-              </div>
+              {role !== 'admin' && (
+                <div className="text-center pt-3 border-t border-slate-100 mt-4">
+                  <button
+                    type="button"
+                    onClick={() => setIsRegister(!isRegister)}
+                    className="text-xs text-slate-500 hover:text-[#0084ff] font-medium transition-colors cursor-pointer"
+                  >
+                    {isRegister
+                      ? 'Already have an account? Sign In'
+                      : "Don't have an account? Create one"}
+                  </button>
+                </div>
+              )}
             </form>
           </div>
         </div>

@@ -92,6 +92,7 @@ export const FloxaWorkShell: React.FC<FloxaWorkShellProps> = ({
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
   const isClient = currentUser.role === 'client';
+  const isAdmin = currentUser.role === 'admin' || Boolean((currentUser as any).adminRole);
 
   const handleNavClick = (tab: FloxaWorkTab) => {
     onChangeTab(tab);
@@ -132,7 +133,7 @@ export const FloxaWorkShell: React.FC<FloxaWorkShellProps> = ({
             </button>
           </div>
           <div className="text-xs text-slate-500 mt-1.5 font-medium">
-            {isClient ? 'Client Portal' : 'Freelancer Portal'}
+            {isAdmin ? 'Operations & Governance' : isClient ? 'Client Portal' : 'Freelancer Portal'}
           </div>
         </div>
 
@@ -140,7 +141,41 @@ export const FloxaWorkShell: React.FC<FloxaWorkShellProps> = ({
         <div className="nav-section flex-1 overflow-y-auto">
           <div className="nav-lbl">Workspace</div>
 
-          {isClient ? (
+          {isAdmin ? (
+            <>
+              <button
+                onClick={() => handleNavClick('admin')}
+                className={`nav-item ${currentTab === 'admin' ? 'active' : ''}`}
+              >
+                <ShieldAlert size={15} className="nav-icon text-[#0084ff]" />
+                <span>Operations & Governance</span>
+              </button>
+
+              <button
+                onClick={() => handleNavClick('discovery')}
+                className={`nav-item ${currentTab === 'discovery' ? 'active' : ''}`}
+              >
+                <Sparkles size={15} className="nav-icon text-[#0084ff]" />
+                <span>Platform Users</span>
+              </button>
+
+              <button
+                onClick={() => handleNavClick('briefs')}
+                className={`nav-item ${currentTab === 'briefs' ? 'active' : ''}`}
+              >
+                <Compass size={15} className="nav-icon" />
+                <span>Active Briefs</span>
+              </button>
+
+              <button
+                onClick={() => handleNavClick('workspace')}
+                className={`nav-item ${currentTab === 'workspace' ? 'active' : ''}`}
+              >
+                <Layers size={15} className="nav-icon" />
+                <span>Contracts & Milestones</span>
+              </button>
+            </>
+          ) : isClient ? (
             <>
               <button
                 onClick={() => handleNavClick('client_dashboard')}
@@ -268,13 +303,15 @@ export const FloxaWorkShell: React.FC<FloxaWorkShellProps> = ({
             <span>Profile</span>
           </button>
 
-          <button
-            onClick={() => handleNavClick('admin')}
-            className={`nav-item ${currentTab === 'admin' ? 'active' : ''}`}
-          >
-            <ShieldAlert size={15} className="nav-icon text-[#0084ff]" />
-            <span>Operations & KYC</span>
-          </button>
+          {isAdmin && (
+            <button
+              onClick={() => handleNavClick('admin')}
+              className={`nav-item ${currentTab === 'admin' ? 'active' : ''}`}
+            >
+              <ShieldAlert size={15} className="nav-icon text-[#0084ff]" />
+              <span>Operations & KYC</span>
+            </button>
+          )}
 
           <button onClick={onLogout} className="nav-item hover:text-red-500 text-slate-500">
             <LogOut size={15} className="nav-icon" />
@@ -382,7 +419,12 @@ export const FloxaWorkShell: React.FC<FloxaWorkShellProps> = ({
           </div>
 
           {/* Desktop Action Button */}
-          {isClient ? (
+          {isAdmin ? (
+            <button onClick={() => handleNavClick('admin')} className="btn-cyan-pill hidden sm:inline-flex">
+              <ShieldAlert size={14} />
+              <span>Governance Hub</span>
+            </button>
+          ) : isClient ? (
             <button onClick={onOpenNewAction} className="btn-cyan-pill hidden sm:inline-flex">
               <Plus size={14} strokeWidth={3} />
               <span>Post Brief</span>
