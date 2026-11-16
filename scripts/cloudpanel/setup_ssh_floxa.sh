@@ -67,3 +67,4 @@ echo ""
 echo "  Connect command from your client machine:"
 echo "  ssh ${DEPLOY_USER}@89.116.121.25"
 echo "===================================================================="
+

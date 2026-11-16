@@ -93,3 +93,4 @@ You can see all listening processes, their PIDs, and their respective user owner
 | **MySQL / MariaDB Databases** | FLOXA uses MongoDB 7.0 Community Edition on `127.0.0.1:27017` only. Never connects to or touches MySQL. | **Zero effect** |
 | **Existing SSH Users & Keys** | `/home/floxa/.ssh` is isolated to user `floxa`. Default SSH port `22` and `/etc/ssh/sshd_config` remain untouched. | **Zero effect** |
 | **CloudPanel Nginx Global Config** | CloudPanel uses isolated include files (`/etc/nginx/sites-enabled/work.flumenx.in.conf`). No global Nginx files overwritten. | **Zero effect** |
+
