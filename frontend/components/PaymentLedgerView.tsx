@@ -16,6 +16,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { fetchActiveContract, getAuthUser, downloadMilestoneInvoiceApi } from '@/lib/api';
+import { formatCurrency } from '@/lib/currency';
 
 export const PaymentLedgerView: React.FC = () => {
   const [contractData, setContractData] = useState<{
@@ -115,9 +116,17 @@ export const PaymentLedgerView: React.FC = () => {
           )}
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold">
             <ShieldCheck size={15} className="text-emerald-600" />
-            <span>Zero Escrow Custody</span>
+            <span>0% Platform Custody • Direct Milestone Settlement</span>
           </div>
         </div>
+      </div>
+
+      {/* Mandatory Non-Custodial Legal & Settlement Notice */}
+      <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200/90 text-xs text-slate-700 flex items-start gap-2.5">
+        <ShieldCheck size={16} className="text-[#0084ff] shrink-0 mt-0.5" />
+        <p className="leading-relaxed text-[11.5px]">
+          <strong className="text-slate-900">Direct Non-Custodial Notice:</strong> Payments happen directly between clients and freelancers via external settlement channels (Bank Transfer, UPI, Wire, Stripe). FLOXA does not collect, hold, process, transfer, or verify payments.
+        </p>
       </div>
 
       {/* 3 KPI Summary Cards */}
@@ -128,7 +137,7 @@ export const PaymentLedgerView: React.FC = () => {
           </div>
           <div>
             <div className="kpi-label">{isClient ? 'Direct Payments Confirmed' : 'Total Earned Directly'}</div>
-            <div className="kpi-value text-emerald-600">${totalAcknowledged.toLocaleString()}</div>
+            <div className="kpi-value text-emerald-600">{formatCurrency(totalAcknowledged, contract?.currency || 'USD')}</div>
             <div className="kpi-sub">Acknowledged received by freelancer</div>
           </div>
         </div>
@@ -139,7 +148,7 @@ export const PaymentLedgerView: React.FC = () => {
           </div>
           <div>
             <div className="kpi-label">Reported by Client</div>
-            <div className="kpi-value text-[#0084ff]">${totalReported.toLocaleString()}</div>
+            <div className="kpi-value text-[#0084ff]">{formatCurrency(totalReported, contract?.currency || 'USD')}</div>
             <div className="kpi-sub">Awaiting talent bank confirmation</div>
           </div>
         </div>
@@ -150,7 +159,7 @@ export const PaymentLedgerView: React.FC = () => {
           </div>
           <div>
             <div className="kpi-label">Pending Delivery / Next Milestones</div>
-            <div className="kpi-value">${totalPending.toLocaleString()}</div>
+            <div className="kpi-value">{formatCurrency(totalPending, contract?.currency || 'USD')}</div>
             <div className="kpi-sub">Remaining project value</div>
           </div>
         </div>
@@ -210,7 +219,7 @@ export const PaymentLedgerView: React.FC = () => {
                         </div>
                       </td>
                       <td className="py-3.5 px-4 font-mono font-bold text-slate-900 whitespace-nowrap">
-                        ${m.amount?.toLocaleString()}
+                        {formatCurrency(m.amount, m.currency || contract?.currency || 'USD')}
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         {isApproved ? (

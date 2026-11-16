@@ -289,6 +289,7 @@ export async function createBrief(briefData: {
   deliverablesRequired: string[];
   budgetMin: number;
   budgetMax: number;
+  currency?: string;
   deadlineWeeks?: number;
 }) {
   const token = getAuthToken();
@@ -481,6 +482,7 @@ export async function submitProposal(proposalData: {
     revisionAssumptions?: string;
   }[];
   totalPrice: number;
+  currency?: string;
   estimatedDays: number;
   assumptionsAndExclusions?: string;
   portfolioItems?: {

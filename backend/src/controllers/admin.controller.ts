@@ -100,46 +100,74 @@ export async function getAdminPlatformStats(
       Contract.countDocuments({ status: 'completed' }),
       Contract.countDocuments({ status: 'disputed' }),
       Contract.aggregate([
-        { $group: { _id: null, totalValue: { $sum: '$totalBudget' }, avgValue: { $avg: '$totalBudget' } } },
+        { $group: { _id: { $toUpper: { $ifNull: ['$currency', 'USD'] } }, totalValue: { $sum: '$totalBudget' }, avgValue: { $avg: '$totalBudget' }, count: { $sum: 1 } } },
       ]),
       Contract.aggregate([
         { $match: { status: 'active' } },
-        { $group: { _id: null, totalValue: { $sum: '$totalBudget' } } },
+        { $group: { _id: { $toUpper: { $ifNull: ['$currency', 'USD'] } }, totalValue: { $sum: '$totalBudget' }, count: { $sum: 1 } } },
       ]),
       Contract.aggregate([
         { $match: { status: 'completed' } },
-        { $group: { _id: null, totalValue: { $sum: '$totalBudget' } } },
+        { $group: { _id: { $toUpper: { $ifNull: ['$currency', 'USD'] } }, totalValue: { $sum: '$totalBudget' }, count: { $sum: 1 } } },
       ]),
     ]);
 
-    const totalContractualAgreedValue = contractualAgreedAgg[0]?.totalValue || 0;
-    const averageContractValue = Number((contractualAgreedAgg[0]?.avgValue || 0).toFixed(2));
-    const activeContractualValue = activeContractualAgg[0]?.totalValue || 0;
-    const completedContractualValue = completedContractualAgg[0]?.totalValue || 0;
+    // Build currency breakdown dictionaries
+    const totalVolumeByCurrency: Record<string, number> = {};
+    let totalContractualAgreedValue = 0;
+    contractualAgreedAgg.forEach((c: any) => {
+      totalVolumeByCurrency[c._id] = c.totalValue;
+      if (c._id === 'USD') totalContractualAgreedValue += c.totalValue;
+    });
 
-    // 4. User-Reported External Settlement Metrics (Explicitly labeled, NOT platform revenue)
+    const activeVolumeByCurrency: Record<string, number> = {};
+    let activeContractualValue = 0;
+    activeContractualAgg.forEach((c: any) => {
+      activeVolumeByCurrency[c._id] = c.totalValue;
+      if (c._id === 'USD') activeContractualValue += c.totalValue;
+    });
+
+    const completedVolumeByCurrency: Record<string, number> = {};
+    let completedContractualValue = 0;
+    completedContractualAgg.forEach((c: any) => {
+      completedVolumeByCurrency[c._id] = c.totalValue;
+      if (c._id === 'USD') completedContractualValue += c.totalValue;
+    });
+
+    const averageContractValue = Number((contractualAgreedAgg[0]?.avgValue || 0).toFixed(2));
+
+    // 4. User-Reported External Settlement Metrics (Grouped strictly by ISO currency)
     const [
       reportedExternalAgg,
       acknowledgedExternalAgg,
       disputedExternalAgg,
     ] = await Promise.all([
       PaymentRecord.aggregate([
-        { $match: { status: 'reported' } },
-        { $group: { _id: null, total: { $sum: '$amount' } } },
+        { $match: { status: { $in: ['reported', 'reported_by_client'] } } },
+        { $group: { _id: { $toUpper: { $ifNull: ['$currency', 'USD'] } }, total: { $sum: '$amount' } } },
       ]),
       PaymentRecord.aggregate([
-        { $match: { status: 'acknowledged' } },
-        { $group: { _id: null, total: { $sum: '$amount' } } },
+        { $match: { status: { $in: ['acknowledged', 'acknowledged_by_freelancer'] } } },
+        { $group: { _id: { $toUpper: { $ifNull: ['$currency', 'USD'] } }, total: { $sum: '$amount' } } },
       ]),
       PaymentRecord.aggregate([
         { $match: { status: 'disputed' } },
-        { $group: { _id: null, total: { $sum: '$amount' } } },
+        { $group: { _id: { $toUpper: { $ifNull: ['$currency', 'USD'] } }, total: { $sum: '$amount' } } },
       ]),
     ]);
 
-    const reportedExternalPaymentAmount = reportedExternalAgg[0]?.total || 0;
-    const acknowledgedExternalPaymentAmount = acknowledgedExternalAgg[0]?.total || 0;
-    const disputedUserReportedPaymentAmount = disputedExternalAgg[0]?.total || 0;
+    const reportedByCurrency: Record<string, number> = {};
+    reportedExternalAgg.forEach((r: any) => { reportedByCurrency[r._id] = r.total; });
+
+    const acknowledgedByCurrency: Record<string, number> = {};
+    acknowledgedExternalAgg.forEach((r: any) => { acknowledgedByCurrency[r._id] = r.total; });
+
+    const disputedByCurrency: Record<string, number> = {};
+    disputedExternalAgg.forEach((r: any) => { disputedByCurrency[r._id] = r.total; });
+
+    const reportedExternalPaymentAmount = reportedByCurrency['USD'] || reportedExternalAgg[0]?.total || 0;
+    const acknowledgedExternalPaymentAmount = acknowledgedByCurrency['USD'] || acknowledgedExternalAgg[0]?.total || 0;
+    const disputedUserReportedPaymentAmount = disputedByCurrency['USD'] || disputedExternalAgg[0]?.total || 0;
 
     // 5. Moderation & Trust Queues
     const [
@@ -183,13 +211,19 @@ export async function getAdminPlatformStats(
             completedContractualValue,
             averageContractValue,
             contractCount: totalContracts,
-            description: 'Sum of agreed project scopes between clients and freelancers. This is not platform revenue.',
+            volumeByCurrency: totalVolumeByCurrency,
+            activeVolumeByCurrency,
+            completedVolumeByCurrency,
+            description: 'Sum of agreed project scopes between clients and freelancers grouped by ISO currency. This is not platform revenue.',
           },
         },
         externalSettlements: {
           reportedExternalPaymentAmount,
           acknowledgedExternalPaymentAmount,
           disputedUserReportedPaymentAmount,
+          reportedByCurrency,
+          acknowledgedByCurrency,
+          disputedByCurrency,
           description: 'Self-reported external bank/UPI transfers between contract participants. Zero custody escrow.',
         },
         governance: {

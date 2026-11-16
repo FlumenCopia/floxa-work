@@ -28,11 +28,12 @@ export function generateInvoicePdfBuffer(details: InvoiceDetails): Promise<Buffe
       doc.on('end', () => resolve(Buffer.concat(buffers)));
       doc.on('error', (err) => reject(err));
 
-      const currency = details.currency || 'USD';
-      const formattedAmount = `$${details.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}`;
+      const currency = (details.currency || 'USD').toUpperCase();
+      const symbol = currency === 'INR' ? 'Rs.' : currency === 'EUR' ? 'EUR' : currency === 'GBP' ? 'GBP' : currency === 'AED' ? 'AED' : '$';
+      const formattedAmount = `${symbol} ${details.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })} ${currency}`;
       const checksum = crypto
         .createHash('sha256')
-        .update(`${details.invoiceNumber}-${details.contractId}-${details.amount}-${details.issueDate.toISOString()}`)
+        .update(`${details.invoiceNumber}-${details.contractId}-${details.amount}-${currency}-${details.issueDate.toISOString()}`)
         .digest('hex');
 
       // 1. Header Banner
@@ -222,7 +223,7 @@ export function generateInvoicePdfBuffer(details: InvoiceDetails): Promise<Buffe
         .text('Platform Commission:', sumX + 14, y + 28)
         .fillColor('#059669')
         .font('Helvetica-Bold')
-        .text('$0.00 (0% Direct)', sumX + 110, y + 28, { width: 95, align: 'right' });
+        .text(`0.00 ${currency} (0% Direct)`, sumX + 110, y + 28, { width: 95, align: 'right' });
 
       doc
         .strokeColor('#cbd5e1')

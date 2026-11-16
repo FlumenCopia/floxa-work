@@ -28,19 +28,22 @@ import {
 } from '@/lib/api';
 import { WorkspaceView } from './WorkspaceView';
 import { ProposalComparisonEngine } from './ProposalComparisonEngine';
+import { formatCurrency } from '@/lib/currency';
 
 interface ClientDashboardProps {
   onPostNewBrief: () => void;
   onOpenCall: () => void;
-  onEscrowReleased: () => void;
+  onEscrowReleased?: () => void;
+  onMilestoneSettled?: () => void;
 }
 
 export const ClientDashboard: React.FC<ClientDashboardProps> = ({
   onPostNewBrief,
   onOpenCall,
   onEscrowReleased,
+  onMilestoneSettled,
 }) => {
-  const [activeTab, setActiveTab] = useState<'review_bids' | 'active_escrow' | 'my_briefs'>('review_bids');
+  const [activeTab, setActiveTab] = useState<'review_bids' | 'active_milestones' | 'my_briefs'>('review_bids');
   const [briefs, setBriefs] = useState<any[]>([]);
   const [proposals, setProposals] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -92,7 +95,8 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       setSelectedProposalForAcceptance(null);
       setIsComparing(false);
       showToast('Contract initialized successfully! Collaboration workspace is ready.', 'success');
-      onEscrowReleased();
+      if (onMilestoneSettled) onMilestoneSettled();
+      else if (onEscrowReleased) onEscrowReleased();
       loadData();
     } catch (err: any) {
       showToast(err.message || 'Failed to accept proposal and initialize contract', 'error');
@@ -129,7 +133,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
   const activeBriefsCount = briefs.length;
   const pendingReviewsCount = proposals.filter((p) => p.status !== 'accepted').length;
   const acceptedCount = proposals.filter((p) => p.status === 'accepted').length;
-  const escrowTotal = proposals
+  const activeMilestonesTotal = proposals
     .filter((p) => p.status === 'accepted')
     .reduce((acc, p) => acc + (p.totalPrice || 0), 0);
 
@@ -170,8 +174,8 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
           </div>
           <div>
             <div className="kpi-label">Active Project Value</div>
-            <div className="kpi-value">${escrowTotal.toLocaleString()}</div>
-            <div className="kpi-sub">{escrowTotal > 0 ? 'Direct milestone billing' : 'Zero active billing'}</div>
+            <div className="kpi-value">{formatCurrency(activeMilestonesTotal, 'USD')}</div>
+            <div className="kpi-sub">{activeMilestonesTotal > 0 ? 'Direct milestone billing' : 'Zero active billing'}</div>
           </div>
         </div>
 
@@ -221,11 +225,11 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
           </button>
 
           <button
-            onClick={() => setActiveTab('active_escrow')}
-            className={`pill-tab ${activeTab === 'active_escrow' ? 'active' : ''}`}
+            onClick={() => setActiveTab('active_milestones')}
+            className={`pill-tab ${activeTab === 'active_milestones' ? 'active' : ''}`}
           >
             <span>Active Workspaces</span>
-            <span className="pill-tab-count">${escrowTotal.toLocaleString()}</span>
+            <span className="pill-tab-count">{formatCurrency(activeMilestonesTotal, 'USD')}</span>
           </button>
 
           <button
@@ -340,7 +344,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
 
                     <div className="sm:text-right">
                       <div className="text-xl font-extrabold text-[#0084ff] font-mono">
-                        ${proposal.totalPrice?.toLocaleString()} Bid
+                        {formatCurrency(proposal.totalPrice || 0, proposal.currency || 'USD')} Bid
                       </div>
                       <div className="text-xs text-slate-500 font-medium">
                         {proposal.proposedMilestones?.length || 3} Milestones • {proposal.estimatedDays || 21} Days
@@ -424,7 +428,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                         onClick={() => setSelectedProposalForAcceptance(proposal)}
                         className="btn-cyan-pill text-xs px-4 sm:px-5 py-2.5 w-full sm:w-auto text-center justify-center"
                       >
-                        <span>Review & Accept Proposal (${Math.round((proposal.totalPrice || 2400) * 0.4).toLocaleString()} Advance)</span>
+                        <span>Review & Accept Proposal ({formatCurrency(Math.round((proposal.totalPrice || 2400) * 0.4), proposal.currency || 'USD')} Advance)</span>
                       </button>
                     )}
                   </div>
@@ -436,7 +440,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
       )}
 
       {/* Tab 2: Active Contract Workspace */}
-      {!isLoading && activeTab === 'active_escrow' && (
+      {!isLoading && activeTab === 'active_milestones' && (
         <div className="space-y-4">
           <WorkspaceView />
         </div>
@@ -473,7 +477,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                   </div>
                   <div className="text-right">
                     <div className="text-sm font-mono font-bold text-[#0084ff]">
-                      ${brief.budgetMin?.toLocaleString()} - ${brief.budgetMax?.toLocaleString()}
+                      {formatCurrency(brief.budgetMin, brief.currency || 'USD')} - {formatCurrency(brief.budgetMax, brief.currency || 'USD')}
                     </div>
                     <div className="text-[11px] text-slate-500">
                       {brief.proposalsCount || 0} proposals
@@ -554,7 +558,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
 
               <div className="text-right">
                 <div className="text-base font-black text-[#0084ff] font-mono">
-                  ${selectedProposalForAcceptance.totalPrice?.toLocaleString()}
+                  {formatCurrency(selectedProposalForAcceptance.totalPrice || 0, selectedProposalForAcceptance.currency || 'USD')}
                 </div>
                 <div className="text-[10.5px] text-slate-500 font-semibold">
                   {selectedProposalForAcceptance.estimatedDays || 21} Days Est.
@@ -585,7 +589,7 @@ export const ClientDashboard: React.FC<ClientDashboardProps> = ({
                       <span className="text-[10px] text-slate-400 block font-normal">{m.deliveryDays || 7} days</span>
                     </div>
                     <span className="font-mono font-extrabold text-slate-800 shrink-0">
-                      ${m.amount?.toLocaleString()}
+                      {formatCurrency(m.amount || 0, selectedProposalForAcceptance.currency || 'USD')}
                     </span>
                   </div>
                 ))}

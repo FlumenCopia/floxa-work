@@ -42,6 +42,7 @@ import {
   getAuthUser,
   orderInstantPackageApi,
 } from '@/lib/api';
+import { formatCurrency } from '@/lib/currency';
 
 interface DiscoveryViewProps {
   onOpenPitchModal?: (brief: any) => void;
@@ -600,7 +601,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
                     <div>
                       <div className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Rate</div>
                       <div className="text-xs font-extrabold text-slate-900 font-mono">
-                        ${rate}/hr
+                        {formatCurrency(rate, talent.currency || 'USD')}/hr
                       </div>
                     </div>
 
@@ -668,7 +669,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
               const client = brief.clientId || {};
               const title = brief.title || 'Discovery Brief';
               const problem = brief.problemStatement || 'Problem description...';
-              const budget = `$${brief.budgetMin?.toLocaleString()} - $${brief.budgetMax?.toLocaleString()}`;
+              const budget = `${formatCurrency(brief.budgetMin, brief.currency || 'USD')} - ${formatCurrency(brief.budgetMax, brief.currency || 'USD')}`;
               const category = brief.category || 'branding';
               const isSaved = savedProjects.some((b) => (b._id || b.id) === (brief._id || brief.id));
 
@@ -891,7 +892,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
                   >
                     {myBriefs.map((b) => (
                       <option key={b._id || b.id} value={b._id || b.id}>
-                        {b.title} (${b.budgetMin?.toLocaleString()} - ${b.budgetMax?.toLocaleString()})
+                        {b.title} ({formatCurrency(b.budgetMin, b.currency || 'USD')} - {formatCurrency(b.budgetMax, b.currency || 'USD')})
                       </option>
                     ))}
                   </select>
@@ -1065,7 +1066,9 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
                         <span>{pkg.title}</span>
                       </div>
                       <div className="text-right shrink-0">
-                        <div className="font-mono font-extrabold text-sm text-[#0084ff]">${pkg.price?.toLocaleString()}</div>
+                        <div className="font-mono font-extrabold text-sm text-[#0084ff]">
+                          {formatCurrency(pkg.price, pkg.currency || packageModalTalent?.currency || 'USD')}
+                        </div>
                         <div className="text-[10px] text-slate-400 font-medium">{pkg.deliveryDays || 5} days delivery</div>
                       </div>
                     </div>
@@ -1133,7 +1136,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
                 <span>
                   {isOrderingPackage
                     ? 'Creating Contract...'
-                    : `Confirm & Order Package ($${selectedPackage?.price?.toLocaleString() || '0'})`}
+                    : `Confirm & Order Package (${formatCurrency(selectedPackage?.price || 0, selectedPackage?.currency || packageModalTalent?.currency || 'USD')})`}
                 </span>
               </button>
             </div>

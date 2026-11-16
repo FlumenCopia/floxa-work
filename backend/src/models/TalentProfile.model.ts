@@ -35,12 +35,14 @@ export interface ITalentProfile {
   location?: string;
   hourlyRate: number;
   minimumProjectBudget: number;
+  currency?: string;
   availabilityStatus: 'available' | 'busy' | 'not_looking';
   availableSpotsThisMonth: number;
   portfolioLinks: { title: string; url: string; platform: string }[];
   portfolioItems?: ITalentPortfolioItem[];
   services?: ITalentServicePackage[];
   completedContractsCount: number;
+  directVolumeEarned?: number;
   escrowVolumeEarned: number;
   ratingAverage: number;
   ratingCount: number;
@@ -85,6 +87,7 @@ const talentProfileSchema = new Schema<ITalentProfile>(
     location: { type: String, default: 'Remote' },
     hourlyRate: { type: Number, default: 0, index: true },
     minimumProjectBudget: { type: Number, default: 500 },
+    currency: { type: String, default: 'USD' },
     availabilityStatus: {
       type: String,
       enum: ['available', 'busy', 'not_looking'],
@@ -112,6 +115,7 @@ const talentProfileSchema = new Schema<ITalentProfile>(
       },
     ],
     completedContractsCount: { type: Number, default: 0 },
+    directVolumeEarned: { type: Number, default: 0 },
     escrowVolumeEarned: { type: Number, default: 0 },
     ratingAverage: { type: Number, default: 5.0 },
     ratingCount: { type: Number, default: 0 },

@@ -45,6 +45,7 @@ export interface IUser {
   clientRatingAverage?: number;
   clientRatingCount?: number;
   clientCompletedProjectsCount?: number;
+  preferredCurrency?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -87,6 +88,7 @@ const userSchema = new Schema<IUser>(
     clientRatingAverage: { type: Number, default: 5.0 },
     clientRatingCount: { type: Number, default: 0 },
     clientCompletedProjectsCount: { type: Number, default: 0 },
+    preferredCurrency: { type: String, default: 'USD' },
   },
   {
     collection: 'users',

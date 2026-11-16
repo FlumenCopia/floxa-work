@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X, CheckCircle2, ShieldCheck, ArrowRight, ArrowLeft } from 'lucide-react';
 import { createBrief } from '@/lib/api';
+import { CURRENCY_OPTIONS, getCurrencySymbol } from '@/lib/currency';
 
 interface PostBriefModalProps {
   onClose: () => void;
@@ -15,6 +16,7 @@ export const PostBriefModal: React.FC<PostBriefModalProps> = ({ onClose, onPostS
   const [category, setCategory] = useState('branding');
   const [problemStatement, setProblemStatement] = useState('');
   const [speedCraftValue, setSpeedCraftValue] = useState(60);
+  const [currency, setCurrency] = useState('USD');
   const [budgetMin, setBudgetMin] = useState(1500);
   const [budgetMax, setBudgetMax] = useState(3000);
   const [deliverables, setDeliverables] = useState('Logo, Brand Guidelines, Figma Component Library');
@@ -45,6 +47,7 @@ export const PostBriefModal: React.FC<PostBriefModalProps> = ({ onClose, onPostS
         deliverablesRequired: delivList.length > 0 ? delivList : ['Core Deliverable'],
         budgetMin: Number(budgetMin),
         budgetMax: Number(budgetMax),
+        currency,
         deadlineWeeks: 3,
       });
 
@@ -233,22 +236,45 @@ export const PostBriefModal: React.FC<PostBriefModalProps> = ({ onClose, onPostS
 
           {step === 3 && (
             <div className="space-y-4">
+              {/* Currency Selector */}
+              <div>
+                <label className="text-xs text-slate-700 font-bold block mb-1">Project Contractual Currency</label>
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#0084ff] focus:bg-white outline-none text-slate-900 font-medium shadow-2xs"
+                >
+                  {CURRENCY_OPTIONS.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10.5px] text-slate-400 mt-1">
+                  Proposals and agreed milestones will be bound to this currency.
+                </p>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-slate-700 font-bold block mb-1">Min Budget ($)</label>
+                  <label className="text-xs text-slate-700 font-bold block mb-1">
+                    Min Budget ({getCurrencySymbol(currency)})
+                  </label>
                   <input
                     type="number"
-                    min={100}
+                    min={10}
                     value={budgetMin}
                     onChange={(e) => setBudgetMin(Number(e.target.value))}
                     className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#0084ff] focus:bg-white outline-none text-slate-900 font-mono shadow-2xs"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-slate-700 font-bold block mb-1">Max Budget ($)</label>
+                  <label className="text-xs text-slate-700 font-bold block mb-1">
+                    Max Budget ({getCurrencySymbol(currency)})
+                  </label>
                   <input
                     type="number"
-                    min={100}
+                    min={10}
                     value={budgetMax}
                     onChange={(e) => setBudgetMax(Number(e.target.value))}
                     className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#0084ff] focus:bg-white outline-none text-slate-900 font-mono shadow-2xs"
@@ -265,10 +291,10 @@ export const PostBriefModal: React.FC<PostBriefModalProps> = ({ onClose, onPostS
               <div className="p-3.5 rounded-2xl bg-blue-50/80 border border-blue-200 text-xs text-slate-700 space-y-1.5 leading-relaxed">
                 <div className="text-[#0084ff] font-bold flex items-center gap-1.5 text-xs">
                   <ShieldCheck size={14} />
-                  <span>Direct Milestone Settlement (Zero Escrow)</span>
+                  <span>Direct Milestone Settlement (0% Platform Custody)</span>
                 </div>
                 <p className="text-[11px] text-slate-600 font-normal">
-                  Clients disburse funds directly per milestone upon deliverable signoff. FLOXA Work never holds or escrows user funds.
+                  Clients disburse funds directly per milestone upon deliverable signoff. FLOXA Work does not collect, hold, process, transfer, or verify payments.
                 </p>
               </div>
 

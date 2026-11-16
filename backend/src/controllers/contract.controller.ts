@@ -63,13 +63,15 @@ export async function acceptProposalAndCreateContract(
       return;
     }
 
+    const agreedCurrency = proposal.currency || brief.currency || 'USD';
+
     const contract = await Contract.create({
       briefId: brief._id,
       proposalId: proposal._id,
       clientId: req.user.id,
       freelancerId: proposal.freelancerId,
       totalBudget: proposal.totalPrice,
-      currency: brief.currency || 'USD',
+      currency: agreedCurrency,
       status: 'active',
       msaAgreementSignedAt: new Date(),
       clientSignature: clientSignature || 'Digital E-Signature verified',
@@ -82,7 +84,7 @@ export async function acceptProposalAndCreateContract(
       title: m.title,
       description: m.description,
       amount: m.amount,
-      currency: brief.currency || 'USD',
+      currency: agreedCurrency,
       deliverableStatus: index === 0 ? 'approved' : 'in_progress',
       paymentStatus: index === 0 ? 'reported_by_client' : 'not_recorded',
       escrowState: index === 0 ? 'released' : 'awaiting_deposit',
@@ -99,7 +101,7 @@ export async function acceptProposalAndCreateContract(
       payerId: contract.clientId,
       payeeId: contract.freelancerId,
       amount: advanceMilestone.amount,
-      currency: contract.currency || 'USD',
+      currency: agreedCurrency,
       paymentMethod: paymentMethod || 'bank_transfer',
       paymentMethodDetails: 'Milestone 1 Advance direct arrangement',
       reportedDate: new Date(),
@@ -546,7 +548,7 @@ export async function reportMilestonePayment(
       payerId: contract.clientId,
       payeeId: contract.freelancerId,
       amount: milestone.amount,
-      currency: milestone.currency || 'USD',
+      currency: milestone.currency || contract.currency || 'USD',
       paymentMethod: paymentMethod || 'bank_transfer',
       paymentMethodDetails: paymentMethodDetails || '',
       reportedDate: new Date(),
@@ -908,7 +910,7 @@ export async function downloadMilestoneInvoice(
       freelancerName: freelancer?.name || 'Verified Specialist',
       freelancerEmail: freelancer?.email || 'freelancer@floxa.work',
       amount,
-      currency: contract.currency || 'USD',
+      currency: milestone?.currency || contract.currency || 'USD',
       deliverables,
       status: milestone?.escrowState === 'released' || milestone?.paymentStatus === 'acknowledged_by_freelancer'
         ? 'Settled & Verified'
@@ -939,7 +941,7 @@ export async function orderInstantPackage(
       return;
     }
 
-    const { freelancerId, packageTitle, price, deliveryDays, deliverables, briefNote } = req.body;
+    const { freelancerId, packageTitle, price, deliveryDays, deliverables, briefNote, currency } = req.body;
     if (!freelancerId || !packageTitle || !price) {
       res.status(400).json({ error: 'freelancerId, packageTitle, and price are required' });
       return;
@@ -951,6 +953,9 @@ export async function orderInstantPackage(
       return;
     }
 
+    const talentProfile = await TalentProfile.findOne({ userId: (freelancer as any)._id });
+    const orderCurrency = currency || (talentProfile as any)?.currency || (freelancer as any).preferredCurrency || 'USD';
+
     const brief = await Brief.create({
       clientId: req.user.id,
       title: packageTitle,
@@ -960,7 +965,7 @@ export async function orderInstantPackage(
       deliverablesRequired: Array.isArray(deliverables) && deliverables.length > 0 ? deliverables : [packageTitle],
       budgetMin: Number(price),
       budgetMax: Number(price),
-      currency: 'USD',
+      currency: orderCurrency,
       deadlineWeeks: Math.max(1, Math.ceil((Number(deliveryDays) || 7) / 7)),
       status: 'assigned',
       sliders: [],
@@ -973,7 +978,7 @@ export async function orderInstantPackage(
       clientId: req.user.id,
       freelancerId: (freelancer as any)._id,
       totalBudget: Number(price),
-      currency: 'USD',
+      currency: orderCurrency,
       status: 'active',
       msaAgreementSignedAt: new Date(),
       clientSignature: `Instant Order by ${req.user.name || 'Client'} (${req.user.email || 'client@floxa.work'})`,
@@ -991,7 +996,7 @@ export async function orderInstantPackage(
       title: `${packageTitle} — Complete Delivery`,
       description: `Delivery within ${deliveryDays || 5} business days. Deliverables: ${(deliverables || []).join(', ')}`,
       amount: Number(price),
-      currency: 'USD',
+      currency: orderCurrency,
       deliverableStatus: 'in_progress',
       paymentStatus: 'not_recorded',
       escrowState: 'awaiting_deposit',
@@ -1006,7 +1011,7 @@ export async function orderInstantPackage(
       payerId: contract.clientId,
       payeeId: contract.freelancerId,
       amount: milestone.amount,
-      currency: 'USD',
+      currency: orderCurrency,
       paymentMethod: 'bank_transfer',
       paymentMethodDetails: 'Fixed-Scope Package Order',
       reportedDate: new Date(),

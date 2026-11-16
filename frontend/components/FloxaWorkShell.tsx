@@ -216,7 +216,7 @@ export const FloxaWorkShell: React.FC<FloxaWorkShellProps> = ({
                 <Layers size={15} className="nav-icon" />
                 <span>Milestones</span>
                 {Boolean(badgeCounts.activeContractEscrow && badgeCounts.activeContractEscrow > 0) && (
-                  <span className="nav-badge">${badgeCounts.activeContractEscrow}</span>
+                  <span className="nav-badge">{badgeCounts.activeContractEscrow}</span>
                 )}
               </button>
             </>
@@ -264,7 +264,7 @@ export const FloxaWorkShell: React.FC<FloxaWorkShellProps> = ({
                 <Layers size={15} className="nav-icon" />
                 <span>Active Contract</span>
                 {Boolean(badgeCounts.activeContractEscrow && badgeCounts.activeContractEscrow > 0) && (
-                  <span className="nav-badge">${badgeCounts.activeContractEscrow}</span>
+                  <span className="nav-badge">{badgeCounts.activeContractEscrow}</span>
                 )}
               </button>
             </>
@@ -574,149 +574,110 @@ export const FloxaWorkShell: React.FC<FloxaWorkShellProps> = ({
       </div>
 
       {/* ========================================================
-          MOBILE DOWN NAVIGATION BAR (DOWN NAV FOR MOBILE USERS)
+          MOBILE 5-TAB DOWN NAVIGATION BAR (RESPONSIVE < 768px)
+          Exact 5 Tabs: Explore, Projects, Messages, Milestones, Profile
+          Touch Targets >= 44px, No Horizontal Overflow on 320px-430px
           ======================================================== */}
-      <nav className="mobile-down-nav lg:hidden">
-        {isClient ? (
-          <>
-            {/* 1. Review Bids */}
-            <button
-              onClick={() => handleNavClick('client_dashboard')}
-              className={`mobile-nav-btn ${
-                currentTab === 'client_dashboard' || currentTab === 'mini-discovery' ? 'active' : ''
-              }`}
-            >
-              <div className="mobile-nav-icon-wrap">
-                <Briefcase size={18} />
-                {Boolean(badgeCounts.reviewBids && badgeCounts.reviewBids > 0) && (
-                  <span className="mobile-nav-dot-badge">{badgeCounts.reviewBids}</span>
-                )}
-              </div>
-              <span>Bids</span>
-            </button>
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 lg:hidden px-2 py-1 flex items-center justify-around safe-bottom shadow-lg">
+        {/* 1. Explore */}
+        <button
+          onClick={() => handleNavClick(isClient ? 'discovery' : 'briefs')}
+          className={`flex flex-col items-center justify-center min-h-[48px] min-w-[56px] px-1 py-1 rounded-xl transition-all ${
+            currentTab === 'discovery' || (!isClient && currentTab === 'briefs')
+              ? 'text-[#0084ff] font-bold'
+              : 'text-slate-500 hover:text-slate-900 font-medium'
+          }`}
+          aria-label="Explore"
+        >
+          <div className="relative flex items-center justify-center">
+            {isClient ? <Sparkles size={20} /> : <Search size={20} />}
+            {Boolean(!isClient && badgeCounts.exploreBriefs && badgeCounts.exploreBriefs > 0) && (
+              <span className="absolute -top-1 -right-2 px-1 text-[9px] font-bold bg-[#0084ff] text-white rounded-full min-w-[14px] text-center">
+                {badgeCounts.exploreBriefs}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] tracking-tight mt-0.5">Explore</span>
+        </button>
 
-            {/* 2. My Briefs */}
-            <button
-              onClick={() => handleNavClick('briefs')}
-              className={`mobile-nav-btn ${currentTab === 'briefs' ? 'active' : ''}`}
-            >
-              <div className="mobile-nav-icon-wrap">
-                <Compass size={18} />
-                {Boolean(badgeCounts.myBriefs && badgeCounts.myBriefs > 0) && (
-                  <span className="mobile-nav-dot-badge">{badgeCounts.myBriefs}</span>
-                )}
-              </div>
-              <span>Briefs</span>
-            </button>
+        {/* 2. Projects */}
+        <button
+          onClick={() => handleNavClick(isClient ? 'client_dashboard' : 'mini-discovery')}
+          className={`flex flex-col items-center justify-center min-h-[48px] min-w-[56px] px-1 py-1 rounded-xl transition-all ${
+            currentTab === 'client_dashboard' || currentTab === 'mini-discovery' || (isClient && currentTab === 'briefs')
+              ? 'text-[#0084ff] font-bold'
+              : 'text-slate-500 hover:text-slate-900 font-medium'
+          }`}
+          aria-label="Projects"
+        >
+          <div className="relative flex items-center justify-center">
+            <Briefcase size={20} />
+            {Boolean(isClient && badgeCounts.reviewBids && badgeCounts.reviewBids > 0) && (
+              <span className="absolute -top-1 -right-2 px-1 text-[9px] font-bold bg-[#0084ff] text-white rounded-full min-w-[14px] text-center">
+                {badgeCounts.reviewBids}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] tracking-tight mt-0.5">Projects</span>
+        </button>
 
-            {/* 3. Center Elevated Action Button: + Post */}
-            <button
-              onClick={onOpenNewAction}
-              className="mobile-nav-center-btn"
-              title="Post New Brief"
-            >
-              <div className="mobile-nav-center-icon">
-                <Plus size={20} strokeWidth={3} />
-              </div>
-              <span className="text-[10px] font-bold text-[#0084ff] mt-0.5">Post</span>
-            </button>
+        {/* 3. Messages */}
+        <button
+          onClick={() => handleNavClick('chat')}
+          className={`flex flex-col items-center justify-center min-h-[48px] min-w-[56px] px-1 py-1 rounded-xl transition-all ${
+            currentTab === 'chat'
+              ? 'text-[#0084ff] font-bold'
+              : 'text-slate-500 hover:text-slate-900 font-medium'
+          }`}
+          aria-label="Messages"
+        >
+          <div className="relative flex items-center justify-center">
+            <MessageSquare size={20} />
+            {Boolean(unreadMessagesCount && unreadMessagesCount > 0) && (
+              <span className="absolute -top-1 -right-2 px-1 text-[9px] font-bold bg-[#0084ff] text-white rounded-full min-w-[14px] text-center animate-pulse">
+                {unreadMessagesCount}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] tracking-tight mt-0.5">Messages</span>
+        </button>
 
-            {/* 4. Milestones */}
-            <button
-              onClick={() => handleNavClick('workspace')}
-              className={`mobile-nav-btn ${currentTab === 'workspace' ? 'active' : ''}`}
-            >
-              <div className="mobile-nav-icon-wrap">
-                <Layers size={18} />
-                {Boolean(badgeCounts.activeContractEscrow && badgeCounts.activeContractEscrow > 0) && (
-                  <span className="mobile-nav-dot-badge">${badgeCounts.activeContractEscrow}</span>
-                )}
-              </div>
-              <span>Milestones</span>
-            </button>
+        {/* 4. Milestones / Updates */}
+        <button
+          onClick={() => handleNavClick('workspace')}
+          className={`flex flex-col items-center justify-center min-h-[48px] min-w-[56px] px-1 py-1 rounded-xl transition-all ${
+            currentTab === 'workspace' || currentTab === 'escrow'
+              ? 'text-[#0084ff] font-bold'
+              : 'text-slate-500 hover:text-slate-900 font-medium'
+          }`}
+          aria-label="Milestones"
+        >
+          <div className="relative flex items-center justify-center">
+            <Layers size={20} />
+            {Boolean(badgeCounts.activeContractEscrow && badgeCounts.activeContractEscrow > 0) && (
+              <span className="absolute -top-1 -right-2 px-1 text-[9px] font-bold bg-[#0084ff] text-white rounded-full min-w-[14px] text-center">
+                {badgeCounts.activeContractEscrow}
+              </span>
+            )}
+          </div>
+          <span className="text-[10px] tracking-tight mt-0.5">Milestones</span>
+        </button>
 
-            {/* 5. Messages */}
-            <button
-              onClick={() => handleNavClick('chat')}
-              className={`mobile-nav-btn ${currentTab === 'chat' ? 'active' : ''}`}
-            >
-              <div className="mobile-nav-icon-wrap">
-                <MessageSquare size={18} />
-                {Boolean(unreadMessagesCount && unreadMessagesCount > 0) && (
-                  <span className="mobile-nav-dot-badge animate-pulse">{unreadMessagesCount}</span>
-                )}
-              </div>
-              <span>Messages</span>
-            </button>
-          </>
-        ) : (
-          <>
-            {/* 1. Explore Briefs */}
-            <button
-              onClick={() => handleNavClick('briefs')}
-              className={`mobile-nav-btn ${currentTab === 'briefs' ? 'active' : ''}`}
-            >
-              <div className="mobile-nav-icon-wrap">
-                <Search size={18} />
-                {Boolean(badgeCounts.exploreBriefs && badgeCounts.exploreBriefs > 0) && (
-                  <span className="mobile-nav-dot-badge">{badgeCounts.exploreBriefs}</span>
-                )}
-              </div>
-              <span>Explore</span>
-            </button>
-
-            {/* 2. Proof Feed */}
-            <button
-              onClick={() => handleNavClick('feed')}
-              className={`mobile-nav-btn ${currentTab === 'feed' ? 'active' : ''}`}
-            >
-              <div className="mobile-nav-icon-wrap">
-                <Layers size={18} />
-              </div>
-              <span>Feed</span>
-            </button>
-
-            {/* 3. Center Elevated Action Button: My Pitches */}
-            <button
-              onClick={() => handleNavClick('mini-discovery')}
-              className="mobile-nav-center-btn"
-              title="My Pitches"
-            >
-              <div className="mobile-nav-center-icon">
-                <Briefcase size={18} strokeWidth={2.5} />
-              </div>
-              <span className="text-[10px] font-bold text-[#0084ff] mt-0.5">Pitches</span>
-            </button>
-
-            {/* 4. Active Contract */}
-            <button
-              onClick={() => handleNavClick('workspace')}
-              className={`mobile-nav-btn ${currentTab === 'workspace' ? 'active' : ''}`}
-            >
-              <div className="mobile-nav-icon-wrap">
-                <ShieldCheck size={18} />
-                {Boolean(badgeCounts.activeContractEscrow && badgeCounts.activeContractEscrow > 0) && (
-                  <span className="mobile-nav-dot-badge">${badgeCounts.activeContractEscrow}</span>
-                )}
-              </div>
-              <span>Contract</span>
-            </button>
-
-            {/* 5. Messages */}
-            <button
-              onClick={() => handleNavClick('chat')}
-              className={`mobile-nav-btn ${currentTab === 'chat' ? 'active' : ''}`}
-            >
-              <div className="mobile-nav-icon-wrap">
-                <MessageSquare size={18} />
-                {Boolean(unreadMessagesCount && unreadMessagesCount > 0) && (
-                  <span className="mobile-nav-dot-badge animate-pulse">{unreadMessagesCount}</span>
-                )}
-              </div>
-              <span>Messages</span>
-            </button>
-          </>
-        )}
+        {/* 5. Profile */}
+        <button
+          onClick={() => handleNavClick('profile')}
+          className={`flex flex-col items-center justify-center min-h-[48px] min-w-[56px] px-1 py-1 rounded-xl transition-all ${
+            currentTab === 'profile'
+              ? 'text-[#0084ff] font-bold'
+              : 'text-slate-500 hover:text-slate-900 font-medium'
+          }`}
+          aria-label="Profile"
+        >
+          <div className="relative flex items-center justify-center">
+            <User size={20} />
+          </div>
+          <span className="text-[10px] tracking-tight mt-0.5">Profile</span>
+        </button>
       </nav>
     </div>
   );

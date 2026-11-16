@@ -36,6 +36,7 @@ import {
   Star,
   AlertOctagon,
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/currency';
 import {
   fetchActiveContract,
   fetchWorkspaceDetailsApi,
@@ -556,7 +557,7 @@ export const WorkspaceView: React.FC = () => {
               <div className="flex items-center gap-1.5">
                 <span className="text-slate-400">Agreed Price:</span>
                 <span className="font-mono font-bold text-[#0084ff]">
-                  ${contract.totalBudget?.toLocaleString()} {contract.currency}
+                  {formatCurrency(contract.totalBudget, contract.currency || 'USD')}
                 </span>
               </div>
             </div>
@@ -750,7 +751,7 @@ export const WorkspaceView: React.FC = () => {
                 >
                   <div className="flex items-center justify-between text-xs font-bold">
                     <span className="text-slate-500">Milestone {m.milestoneNumber}</span>
-                    <span className="font-mono text-[#0084ff]">${m.amount?.toLocaleString()}</span>
+                    <span className="font-mono text-[#0084ff]">{formatCurrency(m.amount, m.currency || contract.currency || 'USD')}</span>
                   </div>
                   <div className="text-sm font-bold text-slate-900 truncate mt-1">{m.title}</div>
                   <div className="mt-2 flex items-center gap-1.5">
@@ -794,7 +795,7 @@ export const WorkspaceView: React.FC = () => {
                 </div>
                 <div className="text-right shrink-0">
                   <div className="text-2xl font-black font-mono text-[#0084ff]">
-                    ${currentMilestone.amount?.toLocaleString()}
+                    {formatCurrency(currentMilestone.amount, currentMilestone.currency || contract.currency || 'USD')}
                   </div>
                   <div className="text-[10px] text-slate-500 font-medium">Contractual Value</div>
                 </div>

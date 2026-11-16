@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import { submitProposal } from '@/lib/api';
+import { formatCurrency, getCurrencySymbol } from '@/lib/currency';
 
 interface MiniDiscoveryModalProps {
   brief: any | null;
@@ -78,6 +79,7 @@ export const MiniDiscoveryModal: React.FC<MiniDiscoveryModalProps> = ({
           { title: 'Milestone 3: Final Delivery & Handover', amount: m3, deliveryDays: 7, estimatedDays: 7 },
         ],
         totalPrice: Number(totalBidPrice),
+        currency: brief.currency || 'USD',
         estimatedDays: 21,
         portfolioItems,
         portfolioProofUrls: portfolioLink.trim() ? [portfolioLink.trim()] : [],
@@ -191,20 +193,31 @@ export const MiniDiscoveryModal: React.FC<MiniDiscoveryModalProps> = ({
           </div>
 
           {/* Section 3: Bid & Milestones */}
-          <div className="grid grid-cols-2 gap-3 pt-2">
-            <div>
-              <label className="text-xs text-slate-600 font-medium block mb-1">Total Bid Price ($)</label>
-              <input
-                type="number"
-                value={totalBidPrice}
-                onChange={(e) => setTotalBidPrice(Number(e.target.value))}
-                className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#0084ff] outline-none text-slate-900 font-mono font-bold shadow-sm"
-              />
+          <div className="pt-2 space-y-2">
+            <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
+              <span>Client Budget Range</span>
+              <span className="font-mono font-bold text-slate-800">
+                {formatCurrency(brief.budgetMin || 0, brief.currency || 'USD')} – {formatCurrency(brief.budgetMax || 0, brief.currency || 'USD')}
+              </span>
             </div>
-            <div>
-              <label className="text-xs text-slate-600 font-medium block mb-1">Direct Milestones</label>
-              <div className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 shadow-sm font-medium">
-                40% Advance • 40% Mid • 20% Final
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs text-slate-600 font-medium block mb-1">
+                  Total Bid Price ({getCurrencySymbol(brief.currency || 'USD')})
+                </label>
+                <input
+                  type="number"
+                  value={totalBidPrice}
+                  onChange={(e) => setTotalBidPrice(Number(e.target.value))}
+                  className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 focus:border-[#0084ff] outline-none text-slate-900 font-mono font-bold shadow-sm"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-slate-600 font-medium block mb-1">Direct Milestones</label>
+                <div className="w-full text-xs p-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 shadow-sm font-medium">
+                  40% Advance • 40% Mid • 20% Final
+                </div>
               </div>
             </div>
           </div>

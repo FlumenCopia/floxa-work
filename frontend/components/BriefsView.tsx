@@ -11,6 +11,7 @@ import {
   Inbox,
 } from 'lucide-react';
 import { fetchBriefs } from '@/lib/api';
+import { formatCurrency } from '@/lib/currency';
 
 export interface ClientBrief {
   _id?: string;
@@ -132,7 +133,7 @@ export const BriefsView: React.FC<BriefsViewProps> = ({
           <div>
             <div className="kpi-label">Active Project Volume</div>
             <div className="kpi-value">
-              ${totalProjectVolume.toLocaleString()}
+              {formatCurrency(totalProjectVolume, 'USD')}
             </div>
             <div className="kpi-sub">Total marketplace value</div>
           </div>
@@ -291,7 +292,7 @@ export const BriefsView: React.FC<BriefsViewProps> = ({
                   {/* Budget Badge */}
                   <div className="flex sm:flex-col items-baseline sm:items-end justify-between sm:justify-start gap-1">
                     <div className="text-base sm:text-lg font-extrabold text-[#0084ff] font-mono">
-                      ${brief.budgetMin?.toLocaleString()} - ${brief.budgetMax?.toLocaleString()}
+                      {formatCurrency(brief.budgetMin, brief.currency || 'USD')} - {formatCurrency(brief.budgetMax, brief.currency || 'USD')}
                     </div>
                     <div className="text-[10px] sm:text-[11px] text-slate-500 font-medium">Direct Milestone Billing</div>
                   </div>
