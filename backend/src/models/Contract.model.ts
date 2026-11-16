@@ -6,7 +6,7 @@ export interface IContract {
   _id?: Types.ObjectId;
   id: string;
   briefId: Types.ObjectId | string;
-  proposalId: Types.ObjectId | string;
+  proposalId?: Types.ObjectId | string;
   clientId: Types.ObjectId | string;
   freelancerId: Types.ObjectId | string;
   totalBudget: number;
@@ -35,7 +35,7 @@ export interface IContract {
 const contractSchema = new Schema<IContract>(
   {
     briefId: { type: Schema.Types.ObjectId, ref: 'Brief', required: true, index: true },
-    proposalId: { type: Schema.Types.ObjectId, ref: 'Proposal', required: true, index: true },
+    proposalId: { type: Schema.Types.ObjectId, ref: 'Proposal', required: false, index: true },
     clientId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     freelancerId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     totalBudget: { type: Number, required: true },
