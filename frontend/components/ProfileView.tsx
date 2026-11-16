@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { fetchUserProfile, updateUserProfile, uploadFile, fetchUserReviewsApi, reportReviewApi } from '@/lib/api';
 import { AuthUser } from './auth/AuthScreen';
+import { formatCurrency, CURRENCY_OPTIONS, getCurrencySymbol } from '@/lib/currency';
 
 interface ProfileViewProps {
   currentUser: AuthUser;
@@ -47,6 +48,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     skills: '',
     hourlyRate: 85,
     availabilityStatus: 'available',
+    preferredCurrency: 'USD',
   });
 
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -83,6 +85,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           skills: Array.isArray(data.profile?.skills) ? data.profile.skills.join(', ') : '',
           hourlyRate: data.profile?.hourlyRate || 85,
           availabilityStatus: data.profile?.availabilityStatus || 'available',
+          preferredCurrency: data.user?.preferredCurrency || (currentUser as any)?.preferredCurrency || 'USD',
         });
       }
       try {
@@ -114,6 +117,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         skills: formData.skills,
         hourlyRate: Number(formData.hourlyRate),
         availabilityStatus: formData.availabilityStatus,
+        preferredCurrency: formData.preferredCurrency,
       });
 
       setMessage({ type: 'success', text: 'Profile updated and saved to database successfully!' });
@@ -189,7 +193,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
               <div className="text-xs font-semibold text-[#0084ff] mt-1 capitalize flex items-center gap-1.5">
                 <span>{isClient ? 'Verified Client Account' : `${user.role} Account`}</span>
-                {!isClient && profile.hourlyRate ? <span>• ${profile.hourlyRate}/hr</span> : null}
+                {!isClient && profile.hourlyRate ? (
+                  <span>• {formatCurrency(profile.hourlyRate, user.preferredCurrency || 'USD')}/hr</span>
+                ) : null}
               </div>
             </div>
           </div>
@@ -268,7 +274,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
           <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
             <div className="text-lg font-bold text-[#0084ff] font-mono">
-              ${stats.totalVolume?.toLocaleString() || '0'}
+              {formatCurrency(stats.totalVolume || 0, user.preferredCurrency || 'USD')}
             </div>
             <div className="text-[10px] text-slate-500 uppercase font-semibold mt-0.5">
               {isClient ? 'Total Funded' : 'Direct Volume'}
@@ -481,7 +487,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-slate-700 block mb-1">Hourly Rate ($)</label>
+                    <label className="text-xs font-semibold text-slate-700 block mb-1">
+                      Hourly Rate ({getCurrencySymbol(formData.preferredCurrency)})
+                    </label>
                     <input
                       type="number"
                       value={formData.hourlyRate}
@@ -493,6 +501,27 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* Preferred Display Currency Selector */}
+              <div>
+                <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  Preferred Display Currency
+                </label>
+                <select
+                  value={formData.preferredCurrency}
+                  onChange={(e) => setFormData({ ...formData, preferredCurrency: e.target.value })}
+                  className="w-full text-xs p-2.5 rounded-xl border border-slate-200 outline-none focus:border-[#0084ff] bg-white font-medium text-slate-800"
+                >
+                  {CURRENCY_OPTIONS.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[10px] text-slate-400 mt-1 leading-normal">
+                  Your chosen display preference for discovery browsing and platform estimates. Agreed contracts and milestones always preserve their original contractual currency.
+                </p>
+              </div>
 
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
                 <button

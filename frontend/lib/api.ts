@@ -266,6 +266,7 @@ export async function updateUserProfile(payload: {
   hourlyRate?: number;
   minimumProjectBudget?: number;
   availabilityStatus?: string;
+  preferredCurrency?: string;
 }) {
   const token = getAuthToken();
   const res = await fetch(`${API_BASE}/users/profile`, {

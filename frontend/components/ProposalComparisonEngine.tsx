@@ -25,6 +25,7 @@ import {
   ArrowUpDown,
   Search,
 } from 'lucide-react';
+import { formatCurrency } from '@/lib/currency';
 
 interface ProposalComparisonEngineProps {
   brief: any;
@@ -241,7 +242,7 @@ export const ProposalComparisonEngine: React.FC<ProposalComparisonEngineProps> =
                   />
                   <span>{author}</span>
                   <span className="font-mono text-[11px] font-bold text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded">
-                    ${price}
+                    {formatCurrency(price, p.currency || brief.currency || 'USD')}
                   </span>
                   {p.status === 'shortlisted' && (
                     <span className="w-2 h-2 rounded-full bg-amber-500" title="Shortlisted" />
@@ -263,10 +264,10 @@ export const ProposalComparisonEngine: React.FC<ProposalComparisonEngineProps> =
               <div className="bg-white/80 p-2.5 rounded-xl border border-blue-100 shadow-xs">
                 <div className="text-[11px] text-slate-500 font-medium">Bid Range</div>
                 <div className="text-sm font-extrabold text-slate-900 font-mono mt-0.5">
-                  ${minPrice.toLocaleString()} - ${maxPrice.toLocaleString()}
+                  {formatCurrency(minPrice, brief.currency || 'USD')} - {formatCurrency(maxPrice, brief.currency || 'USD')}
                 </div>
                 <div className="text-[10px] text-slate-500 mt-0.5">
-                  Variance: ${priceDelta.toLocaleString()}
+                  Variance: {formatCurrency(priceDelta, brief.currency || 'USD')}
                 </div>
               </div>
 
@@ -353,6 +354,7 @@ export const ProposalComparisonEngine: React.FC<ProposalComparisonEngineProps> =
             const isAccepted = proposal.status === 'accepted';
             const price = proposal.totalPrice || 2400;
             const days = proposal.estimatedDays || 21;
+            const currency = proposal.currency || brief.currency || 'USD';
 
             return (
               <div
@@ -403,7 +405,7 @@ export const ProposalComparisonEngine: React.FC<ProposalComparisonEngineProps> =
                     <div>
                       <span className="text-xs text-slate-500 font-medium">Total Bid</span>
                       <div className="text-xl font-extrabold text-[#0084ff] font-mono">
-                        ${price.toLocaleString()}
+                        {formatCurrency(price, currency)}
                       </div>
                     </div>
                     <div className="text-right">
@@ -418,7 +420,7 @@ export const ProposalComparisonEngine: React.FC<ProposalComparisonEngineProps> =
                   <div className="text-[10px] text-slate-500 bg-white px-2 py-1 rounded-md border border-slate-100 flex items-center justify-between font-medium">
                     <span>Advance (40%):</span>
                     <span className="font-bold text-slate-800 font-mono">
-                      ${Math.round(price * 0.4).toLocaleString()} direct
+                      {formatCurrency(Math.round(price * 0.4), currency)} direct
                     </span>
                   </div>
                 </div>
@@ -532,7 +534,7 @@ export const ProposalComparisonEngine: React.FC<ProposalComparisonEngineProps> =
                               M{mIdx + 1}: {m.title}
                             </span>
                             <span className="font-mono text-[#0084ff] shrink-0">
-                              ${m.amount?.toLocaleString()}
+                              {formatCurrency(m.amount, currency)}
                             </span>
                           </div>
                           {m.description && (

@@ -88,6 +88,8 @@ export async function updateUserProfile(req: AuthenticatedRequest, res: Response
       yearsOfExperience,
       location,
       portfolioItems,
+      preferredCurrency,
+      currency,
     } = req.body;
 
     const user = await User.findById(req.user.id);
@@ -109,6 +111,9 @@ export async function updateUserProfile(req: AuthenticatedRequest, res: Response
     if (avatarUrl !== undefined && typeof avatarUrl === 'string') {
       user.avatarUrl = avatarUrl.trim();
     }
+    if (preferredCurrency && typeof preferredCurrency === 'string') {
+      user.preferredCurrency = preferredCurrency.toUpperCase().trim();
+    }
 
     await user.save();
 
@@ -128,6 +133,9 @@ export async function updateUserProfile(req: AuthenticatedRequest, res: Response
             .filter(Boolean);
     }
     if (hourlyRate !== undefined) profile.hourlyRate = Number(hourlyRate) || 0;
+    if (currency || preferredCurrency) {
+      profile.currency = (currency || preferredCurrency).toUpperCase().trim();
+    }
     if (minimumProjectBudget !== undefined) profile.minimumProjectBudget = Number(minimumProjectBudget) || 0;
     if (availabilityStatus && ['available', 'busy', 'not_looking'].includes(availabilityStatus)) {
       profile.availabilityStatus = availabilityStatus;
