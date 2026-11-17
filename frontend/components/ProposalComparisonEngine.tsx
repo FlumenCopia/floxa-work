@@ -163,8 +163,8 @@ export const ProposalComparisonEngine: React.FC<ProposalComparisonEngineProps> =
 
         {/* Proposal Selector Strip */}
         <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full max-w-full min-w-0">
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none max-w-full min-w-0">
               <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5 shrink-0">
                 <Filter size={14} className="text-[#0084ff]" /> Select Proposals:
               </span>
@@ -217,7 +217,7 @@ export const ProposalComparisonEngine: React.FC<ProposalComparisonEngineProps> =
           </div>
 
           {/* Proposal Selection Badges */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none pt-1 border-t border-slate-100">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none pt-1 border-t border-slate-100 max-w-full min-w-0">
             {filteredProposals.map((p) => {
               const id = p._id || p.id;
               const isSelected = selectedIds.includes(id);

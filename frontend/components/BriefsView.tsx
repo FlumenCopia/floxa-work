@@ -175,8 +175,8 @@ export const BriefsView: React.FC<BriefsViewProps> = ({
 
       {/* Pill Filter Tabs & Controls */}
       <div className="space-y-3 p-4 bg-white rounded-2xl border border-slate-200 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full max-w-full min-w-0">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none max-w-full min-w-0">
             {categories.map((c) => (
               <button
                 key={c.id}
@@ -199,8 +199,8 @@ export const BriefsView: React.FC<BriefsViewProps> = ({
         </div>
 
         {/* Budget Filters & Sort Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100">
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-100 w-full max-w-full min-w-0">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 max-w-full min-w-0">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Budget:</span>
             {[
               { id: 'all', label: 'All Budgets' },

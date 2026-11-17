@@ -475,7 +475,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       </div>
 
       {/* 3. Quick Suggestions Row */}
-      <div className="px-4 py-2 bg-white/95 border-t border-slate-100 flex items-center gap-2 overflow-x-auto scrollbar-none">
+      <div className="px-4 py-2 bg-white/95 border-t border-slate-100 flex items-center gap-2 overflow-x-auto scrollbar-none max-w-full min-w-0">
         <Sparkles size={13} className="text-[#0084ff] shrink-0" />
         {quickPrompts.map((q) => (
           <button

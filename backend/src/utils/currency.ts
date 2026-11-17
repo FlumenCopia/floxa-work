@@ -38,3 +38,4 @@ export function formatCurrencyServer(amount: number, code: string = 'USD'): stri
   });
   return `${symbol}${formattedNumber} ${code}`;
 }
+

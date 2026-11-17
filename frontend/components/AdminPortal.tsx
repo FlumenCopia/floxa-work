@@ -221,7 +221,7 @@ export const AdminPortal: React.FC = () => {
       </div>
 
       {/* 2. Navigation Tab Switcher */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-slate-200">
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 border-b border-slate-200 max-w-full min-w-0">
         <button
           onClick={() => setActiveTab('overview')}
           className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 ${

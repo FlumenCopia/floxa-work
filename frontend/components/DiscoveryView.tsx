@@ -304,7 +304,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
         </div>
 
         {/* View Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none self-start sm:self-auto bg-slate-100 p-1 rounded-2xl border border-slate-200">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none self-start sm:self-auto bg-slate-100 p-1 rounded-2xl border border-slate-200 max-w-full min-w-0">
           <button
             onClick={() => setActiveTab('search')}
             className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
@@ -407,7 +407,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
           </div>
 
           {/* Category Chips */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none pt-1 border-t border-slate-100">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none pt-1 border-t border-slate-100 max-w-full min-w-0">
             {categories.map((cat) => (
               <button
                 key={cat.id}
@@ -450,7 +450,7 @@ export const DiscoveryView: React.FC<DiscoveryViewProps> = ({
               </div>
 
               {/* Skill Tag Filters */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none max-w-full min-w-0">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-1">Skill:</span>
                 {[
                   { id: '', label: 'All Skills' },

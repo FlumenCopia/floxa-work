@@ -100,7 +100,7 @@ export const FloxaWorkShell: React.FC<FloxaWorkShellProps> = ({
   };
 
   return (
-    <div className="shell flex flex-col lg:flex-row min-h-screen w-full relative">
+    <div className="shell flex flex-col lg:flex-row min-h-screen w-full max-w-full overflow-x-hidden relative">
       {/* Mobile Drawer Backdrop */}
       {isSidebarOpen && (
         <div
@@ -361,7 +361,7 @@ export const FloxaWorkShell: React.FC<FloxaWorkShellProps> = ({
       </aside>
 
       {/* Main Panel */}
-      <div className="main flex-1 flex flex-col min-w-0 w-full">
+      <div className="main flex-1 flex flex-col min-w-0 w-full max-w-full overflow-x-hidden">
         {/* Topbar: Fully responsive for mobile and desktop */}
         <header className="topbar">
           <div className="flex items-center gap-2">
@@ -568,7 +568,7 @@ export const FloxaWorkShell: React.FC<FloxaWorkShellProps> = ({
         )}
 
         {/* Content Children with ample padding at bottom for mobile down-nav */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-6 lg:p-8 max-w-6xl w-full mx-auto pb-28 lg:pb-8">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-6 lg:p-8 max-w-6xl w-full mx-auto pb-28 lg:pb-8 min-w-0">
           {children}
         </div>
       </div>

@@ -143,8 +143,8 @@ export const FeedView: React.FC<FeedViewProps> = ({ onDirectPitch }) => {
   return (
     <div className="space-y-6 pb-20">
       {/* Category Filter Pills & Create Post Action */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full max-w-full min-w-0">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none w-full max-w-full min-w-0">
           {categories.map((c) => (
             <button
               key={c.id}
